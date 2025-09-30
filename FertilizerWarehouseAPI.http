@@ -1,0 +1,6 @@
+@FertilizerWarehouseAPI_HostAddress = http://localhost:5187
+
+GET {{FertilizerWarehouseAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
