@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using FertilizerWarehouseAPI.Data;
 using FertilizerWarehouseAPI.Models.Entities;
+using System.Linq;
 
 namespace FertilizerWarehouseAPI.Controllers;
 
@@ -15,6 +16,55 @@ public class ProductsController : ControllerBase
     {
         _context = context;
     }
+
+        // Calculate current stock for a product based on warehouse cells and import/export records
+        private decimal CalculateCurrentStock(int productId)
+        {
+            try
+            {
+                // Method 1: Calculate from WarehouseCellProducts (actual physical stock)
+                var warehouseStock = _context.WarehouseCellProducts
+                    .Where(wcp => wcp.ProductId == productId)
+                    .Sum(wcp => wcp.Quantity);
+
+                // Method 2: Calculate from Import/Export records (transactional stock)
+                // Import orders (OrderType = "Import")
+                var totalImported = _context.ImportOrderDetails
+                    .Where(iod => iod.ProductId == productId)
+                    .Include(iod => iod.ImportOrder)
+                    .Where(iod => iod.ImportOrder.OrderType == "Import")
+                    .Sum(iod => iod.Quantity);
+
+                // Export orders (OrderType = "Export") + Sales orders
+                var totalExportedFromImportOrders = _context.ImportOrderDetails
+                    .Where(iod => iod.ProductId == productId)
+                    .Include(iod => iod.ImportOrder)
+                    .Where(iod => iod.ImportOrder.OrderType == "Export")
+                    .Sum(iod => iod.Quantity);
+
+                var totalExportedFromSales = _context.SalesOrderDetails
+                    .Where(sod => sod.ProductId == productId)
+                    .Sum(sod => sod.Quantity);
+
+                var totalExported = totalExportedFromImportOrders + totalExportedFromSales;
+                var transactionalStock = totalImported - totalExported;
+
+                // Use the higher value between warehouse stock and transactional stock
+                // This ensures we get the most accurate current stock
+                var currentStock = Math.Max(warehouseStock, transactionalStock);
+
+                // Debug log
+                Console.WriteLine($"Product {productId}: WarehouseStock={warehouseStock}, Imported={totalImported}, Exported={totalExported}, TransactionalStock={transactionalStock}, FinalStock={currentStock}");
+
+                return currentStock;
+            }
+            catch (Exception ex)
+            {
+                // Log error for debugging
+                Console.WriteLine($"Error calculating stock for product {productId}: {ex.Message}");
+                return 0;
+            }
+        }
 
     // GET: api/Products
     [HttpGet]
@@ -31,38 +81,42 @@ public class ProductsController : ControllerBase
             var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
             var products = await query
-                .Select(p => new
-                {
-                    p.Id,
-                    p.ProductCode,
-                    p.ProductName,
-                    p.Description,
-                    p.Unit,
-                    p.UnitPrice,
-                    p.Price,
-                    p.MinStockLevel,
-                    p.MaxStockLevel,
-                    p.Status,
-                    p.IsActive,
-                    p.CreatedAt,
-                    p.UpdatedAt,
-                    CategoryId = p.CategoryId,
-                    CategoryName = p.Category,
-                    CompanyId = p.CompanyId,
-                    CompanyName = p.Company != null ? p.Company.CompanyName : null,
-                    SupplierId = p.SupplierId,
-                    SupplierName = p.SupplierNavigation != null ? p.SupplierNavigation.SupplierName : null,
-                    ProductionDate = p.ProductionDate,
-                    ExpiryDate = p.ExpiryDate,
-                    BatchNumber = p.BatchNumber
-                })
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
 
+            // Calculate current stock for each product based on import/export records
+            var productsWithStock = products.Select(p => new
+            {
+                p.Id,
+                p.ProductCode,
+                p.ProductName,
+                p.Description,
+                p.Unit,
+                p.UnitPrice,
+                p.Price,
+                p.MinStockLevel,
+                p.MaxStockLevel,
+                p.Status,
+                p.IsActive,
+                p.CreatedAt,
+                p.UpdatedAt,
+                CategoryId = p.CategoryId,
+                CategoryName = p.Category,
+                CompanyId = p.CompanyId,
+                CompanyName = p.Company != null ? p.Company.CompanyName : null,
+                SupplierId = p.SupplierId,
+                SupplierName = p.SupplierNavigation != null ? p.SupplierNavigation.SupplierName : null,
+                ProductionDate = p.ProductionDate,
+                ExpiryDate = p.ExpiryDate,
+                BatchNumber = p.BatchNumber,
+                // Calculate current stock from import/export records
+                CurrentStock = CalculateCurrentStock(p.Id)
+            }).ToList();
+
             return Ok(new
             {
-                products,
+                products = productsWithStock,
                 pagination = new
                 {
                     currentPage = page,
@@ -360,6 +414,259 @@ public class ProductsController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(500, new { message = "An error occurred while deleting product", error = ex.Message });
+        }
+    }
+
+    // Get stock details for a product
+    [HttpGet("{id}/stock-details")]
+    public async Task<IActionResult> GetStockDetails(int id)
+    {
+        try
+        {
+            var product = await _context.Products
+                .Where(p => p.Id == id)
+                .FirstOrDefaultAsync();
+
+            if (product == null)
+            {
+                return NotFound(new { message = "Product not found" });
+            }
+
+            // Get current stock
+            var currentStock = CalculateCurrentStock(id);
+
+            // Debug: Get all orders for this product first
+            var allOrders = await _context.ImportOrderDetails
+                .Where(iod => iod.ProductId == id)
+                .Include(iod => iod.ImportOrder)
+                .Select(iod => new
+                {
+                    orderCode = iod.ImportOrder.OrderNumber,
+                    orderType = iod.ImportOrder.OrderType,
+                    orderDate = iod.ImportOrder.OrderDate,
+                    quantity = iod.Quantity,
+                    unitPrice = iod.UnitPrice,
+                    status = iod.ImportOrder.Status.ToString()
+                })
+                .ToListAsync();
+
+            // Debug log
+            Console.WriteLine($"Product {id} - All orders: {allOrders.Count}");
+            foreach (var order in allOrders)
+            {
+                Console.WriteLine($"Order: {order.orderCode}, Type: {order.orderType}, Qty: {order.quantity}");
+            }
+
+            // Get import orders for this product (OrderType = "Import")
+            var importOrders = allOrders.Where(o => o.orderType == "Import").ToList();
+
+            // Get export orders for this product (OrderType = "Export")
+            var exportOrders = allOrders.Where(o => o.orderType == "Export").ToList();
+
+            // Get sales orders for this product (Sales)
+            var salesOrders = await _context.SalesOrderDetails
+                .Where(sod => sod.ProductId == id)
+                .Include(sod => sod.SalesOrder)
+                .Select(sod => new
+                {
+                    orderCode = sod.SalesOrder.OrderNumber,
+                    orderDate = sod.SalesOrder.OrderDate,
+                    quantity = sod.Quantity,
+                    unitPrice = sod.UnitPrice,
+                    status = sod.SalesOrder.Status.ToString()
+                })
+                .ToListAsync();
+
+            // Get warehouse cells for this product
+            var warehouseCells = await _context.WarehouseCellProducts
+                .Where(wcp => wcp.ProductId == id)
+                .Include(wcp => wcp.WarehouseCell)
+                .ThenInclude(wc => wc.Warehouse)
+                .Select(wcp => new
+                {
+                    cellName = wcp.WarehouseCell.CellCode,
+                    warehouseName = wcp.WarehouseCell.Warehouse.Name,
+                    location = $"{wcp.WarehouseCell.Row}-{wcp.WarehouseCell.Column}",
+                    quantity = wcp.Quantity,
+                    cellType = wcp.WarehouseCell.CellType,
+                    status = wcp.WarehouseCell.Status
+                })
+                .ToListAsync();
+
+            // Get import orders with warehouse cell details
+            var importOrdersWithCells = await _context.ImportOrderDetails
+                .Where(iod => iod.ProductId == id)
+                .Include(iod => iod.ImportOrder)
+                .Select(iod => new
+                {
+                    orderCode = iod.ImportOrder.OrderNumber,
+                    orderDate = iod.ImportOrder.OrderDate,
+                    quantity = iod.Quantity,
+                    unitPrice = iod.UnitPrice,
+                    status = iod.ImportOrder.Status.ToString(),
+                    warehouseCells = _context.WarehouseCellProducts
+                        .Where(wcp => wcp.ProductId == id)
+                        .Include(wcp => wcp.WarehouseCell)
+                        .ThenInclude(wc => wc.Warehouse)
+                        .Select(wcp => new
+                        {
+                            cellName = wcp.WarehouseCell.CellCode,
+                            warehouseName = wcp.WarehouseCell.Warehouse.Name,
+                            location = $"{wcp.WarehouseCell.Row}-{wcp.WarehouseCell.Column}",
+                            quantity = wcp.Quantity
+                        })
+                        .ToList()
+                })
+                .ToListAsync();
+
+            // Calculate totals
+            var totalImported = importOrders.Sum(io => io.quantity);
+            var totalExported = exportOrders.Sum(eo => eo.quantity) + salesOrders.Sum(so => so.quantity);
+
+            var stockDetails = new
+            {
+                currentStock = currentStock,
+                totalImported = totalImported,
+                totalExported = totalExported,
+                importOrders = importOrders,
+                exportOrders = exportOrders,
+                importOrdersWithCells = importOrdersWithCells,
+                salesOrders = salesOrders,
+                warehouseCells = warehouseCells
+            };
+
+            return Ok(stockDetails);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred while getting stock details", error = ex.Message });
+        }
+    }
+
+    // POST: api/Products/calculate-export-prices
+    [HttpPost("calculate-export-prices")]
+    public async Task<ActionResult<object>> CalculateExportPrices()
+    {
+        try
+        {
+            var results = new List<object>();
+            
+            // Get all active products
+            var products = await _context.Products
+                .Where(p => p.IsActive)
+                .ToListAsync();
+
+            foreach (var product in products)
+            {
+                // Get all import orders for this product (FIFO - First In, First Out)
+                var importOrders = await _context.ImportOrderDetails
+                    .Where(iod => iod.ProductId == product.Id)
+                    .Include(iod => iod.ImportOrder)
+                    .Where(iod => iod.ImportOrder.OrderType == "Import")
+                    .OrderBy(iod => iod.ImportOrder.OrderDate) // FIFO: oldest first
+                    .Select(iod => new
+                    {
+                        orderDate = iod.ImportOrder.OrderDate,
+                        quantity = iod.Quantity,
+                        unitPrice = iod.UnitPrice,
+                        remainingQuantity = iod.Quantity // Initially, all quantity is remaining
+                    })
+                    .ToListAsync();
+
+                // Get all export orders for this product
+                var exportOrders = await _context.ImportOrderDetails
+                    .Where(iod => iod.ProductId == product.Id)
+                    .Include(iod => iod.ImportOrder)
+                    .Where(iod => iod.ImportOrder.OrderType == "Export")
+                    .OrderBy(iod => iod.ImportOrder.OrderDate)
+                    .Select(iod => new
+                    {
+                        orderDate = iod.ImportOrder.OrderDate,
+                        quantity = iod.Quantity,
+                        unitPrice = iod.UnitPrice
+                    })
+                    .ToListAsync();
+
+                // Get sales orders for this product
+                var salesOrders = await _context.SalesOrderDetails
+                    .Where(sod => sod.ProductId == product.Id)
+                    .Include(sod => sod.SalesOrder)
+                    .OrderBy(sod => sod.SalesOrder.OrderDate)
+                    .Select(sod => new
+                    {
+                        orderDate = sod.SalesOrder.OrderDate,
+                        quantity = sod.Quantity,
+                        unitPrice = sod.UnitPrice
+                    })
+                    .ToListAsync();
+
+                // Calculate weighted average price for remaining stock
+                decimal totalImported = importOrders.Sum(io => io.quantity);
+                decimal totalExported = exportOrders.Sum(eo => eo.quantity) + salesOrders.Sum(so => so.quantity);
+                decimal remainingStock = totalImported - totalExported;
+
+                if (remainingStock > 0 && totalImported > 0)
+                {
+                    // Calculate weighted average cost
+                    decimal totalCost = importOrders.Sum(io => io.quantity * (io.unitPrice ?? 0m));
+                    decimal weightedAverageCost = totalCost / totalImported;
+
+                    // Calculate weighted average selling price
+                    decimal totalSalesValue = 0;
+                    decimal totalSalesQuantity = 0;
+
+                    // Add export orders to sales calculation
+                    foreach (var export in exportOrders)
+                    {
+                        totalSalesValue += export.quantity * (export.unitPrice ?? 0m);
+                        totalSalesQuantity += export.quantity;
+                    }
+
+                    // Add sales orders to sales calculation
+                    foreach (var sales in salesOrders)
+                    {
+                        totalSalesValue += sales.quantity * sales.unitPrice;
+                        totalSalesQuantity += sales.quantity;
+                    }
+
+                    decimal weightedAverageSellingPrice = totalSalesQuantity > 0 ? totalSalesValue / totalSalesQuantity : 0;
+
+                    // Update product price with calculated selling price
+                    if (weightedAverageSellingPrice > 0)
+                    {
+                        product.Price = weightedAverageSellingPrice;
+                        product.UpdatedAt = DateTime.UtcNow;
+                    }
+
+                    results.Add(new
+                    {
+                        productId = product.Id,
+                        productCode = product.ProductCode,
+                        productName = product.ProductName,
+                        totalImported = totalImported,
+                        totalExported = totalExported,
+                        remainingStock = remainingStock,
+                        weightedAverageCost = weightedAverageCost,
+                        weightedAverageSellingPrice = weightedAverageSellingPrice,
+                        oldPrice = product.Price,
+                        newPrice = weightedAverageSellingPrice > 0 ? weightedAverageSellingPrice : product.Price
+                    });
+                }
+            }
+
+            // Save changes to database
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                message = "Đã tính giá xuất kho thành công",
+                totalProducts = results.Count,
+                results = results
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Lỗi khi tính giá xuất kho", error = ex.Message });
         }
     }
 }

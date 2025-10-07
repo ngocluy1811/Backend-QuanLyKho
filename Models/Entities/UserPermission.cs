@@ -1,14 +1,36 @@
-namespace FertilizerWarehouseAPI.Models.Entities;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
-public class UserPermission : BaseEntity
+namespace FertilizerWarehouseAPI.Models.Entities
 {
-    public int UserId { get; set; }
-    public int PermissionId { get; set; }
-    public bool IsGranted { get; set; } = true;
-    public DateTime GrantedAt { get; set; }
-    public int? GrantedBy { get; set; }
+    public class UserPermission
+    {
+        [Key]
+        public int Id { get; set; }
 
-    // Navigation properties
-    public virtual User User { get; set; } = null!;
-    public virtual Permission Permission { get; set; } = null!;
+        [Required]
+        public int UserId { get; set; }
+
+        [Required]
+        [StringLength(100)]
+        public string PermissionKey { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(100)]
+        public string PermissionName { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(50)]
+        public string Module { get; set; } = string.Empty;
+
+        public bool IsEnabled { get; set; } = true;
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public DateTime? UpdatedAt { get; set; }
+
+        // Navigation properties
+        [ForeignKey("UserId")]
+        public virtual User? User { get; set; }
+    }
 }

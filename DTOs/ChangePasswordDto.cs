@@ -1,19 +1,18 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace FertilizerWarehouseAPI.DTOs;
-
-public class ChangePasswordDto
+namespace FertilizerWarehouseAPI.DTOs
 {
-    [Required(ErrorMessage = "Current password is required")]
-    public string CurrentPassword { get; set; } = string.Empty;
+    public class ChangePasswordDto
+    {
+        [Required(ErrorMessage = "Mật khẩu hiện tại là bắt buộc")]
+        public string CurrentPassword { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "New password is required")]
-    [MinLength(8, ErrorMessage = "Password must be at least 8 characters")]
-    [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]", 
-        ErrorMessage = "Password must contain at least one lowercase letter, one uppercase letter, one digit and one special character")]
-    public string NewPassword { get; set; } = string.Empty;
+        [Required(ErrorMessage = "Mật khẩu mới là bắt buộc")]
+        [MinLength(6, ErrorMessage = "Mật khẩu mới phải có ít nhất 6 ký tự")]
+        public string NewPassword { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Confirm password is required")]
-    [Compare("NewPassword", ErrorMessage = "New password and confirm password do not match")]
-    public string ConfirmPassword { get; set; } = string.Empty;
+        [Required(ErrorMessage = "Xác nhận mật khẩu là bắt buộc")]
+        [Compare("NewPassword", ErrorMessage = "Mật khẩu xác nhận không khớp")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
 }

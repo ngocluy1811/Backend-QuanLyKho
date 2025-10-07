@@ -24,6 +24,12 @@ public class User : BaseEntity
     [StringLength(50)]
     public string? Phone { get; set; }
 
+    [StringLength(255)]
+    public string? Address { get; set; }
+
+    [StringLength(100)]
+    public string? Position { get; set; }
+
     public new bool IsActive { get; set; } = true;
     // public UserStatus Status { get; set; } = UserStatus.Pending; // Temporarily disabled
     public DateTime? LastLoginAt { get; set; }

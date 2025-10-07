@@ -1,15 +1,11 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using FertilizerWarehouseAPI.Data;
-using FertilizerWarehouseAPI.Models.Enums;
-using TaskStatus = FertilizerWarehouseAPI.Models.Enums.TaskStatus;
 
 namespace FertilizerWarehouseAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
     public class ReportsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -19,570 +15,699 @@ namespace FertilizerWarehouseAPI.Controllers
             _context = context;
         }
 
-        /// <summary>
-        /// Get dashboard overview data
-        /// </summary>
+        // GET: api/Reports/dashboard
         [HttpGet("dashboard")]
-        [Authorize(Policy = "Warehouse")]
         public async Task<ActionResult<object>> GetDashboardData()
         {
             try
             {
-                var today = DateTime.Today;
-                var startOfMonth = new DateTime(today.Year, today.Month, 1);
-                var startOfYear = new DateTime(today.Year, 1, 1);
+                var currentDate = DateTime.Now;
+                var startOfMonth = new DateTime(currentDate.Year, currentDate.Month, 1);
 
-                var dashboard = new
+                // Tổng sản lượng tháng này
+                var totalProductionThisMonth = await _context.ImportOrderDetails
+                    .Where(iod => iod.ImportOrder.OrderDate >= startOfMonth && 
+                                 iod.ImportOrder.OrderType == "Import")
+                    .SumAsync(iod => iod.Quantity);
+
+                // Lệnh hoàn thành và đang xử lý
+                var completedOrders = await _context.ImportOrders
+                    .Where(io => io.OrderDate >= startOfMonth && io.Status.ToString() == "Completed")
+                    .CountAsync();
+
+                var processingOrders = await _context.ImportOrders
+                    .Where(io => io.OrderDate >= startOfMonth && 
+                               (io.Status.ToString() == "Pending" || 
+                                io.Status.ToString() == "Processing"))
+                    .CountAsync();
+
+                // Tổng tồn kho hiện tại
+                var totalInventory = await _context.StockItems
+                    .Where(si => si.Product.IsActive)
+                    .SumAsync(si => si.Quantity);
+
+                // Sản phẩm sắp hết
+                var lowStockProducts = await _context.StockItems
+                    .Where(si => si.Product.IsActive && si.Quantity < 100)
+                    .CountAsync();
+
+                // Giá trị tồn kho
+                var inventoryValue = await _context.StockItems
+                    .Where(si => si.Product.IsActive)
+                    .SumAsync(si => si.Quantity * si.Product.Price);
+
+                // Tỷ lệ đạt chuẩn
+                var totalOrders = completedOrders + processingOrders;
+                var complianceRate = totalOrders > 0 ? (decimal)completedOrders / totalOrders * 100 : 0;
+                var qualityIssues = Math.Max(0, (int)(totalOrders * 0.02m));
+
+                // Chi phí sản xuất
+                var productionCost = await _context.ImportOrderDetails
+                    .Where(iod => iod.ImportOrder.OrderDate >= startOfMonth && 
+                                 iod.ImportOrder.OrderType == "Import")
+                    .SumAsync(iod => iod.Quantity * (iod.UnitPrice ?? 0));
+
+                var materialCost = productionCost * 0.8m;
+                var costPerTon = totalProductionThisMonth > 0 ? productionCost / totalProductionThisMonth : 0;
+
+                return Ok(new
                 {
-                    // Overview Stats
-                    TotalWarehouses = await _context.Warehouses.CountAsync(w => w.IsActive),
-                    TotalProducts = await _context.Products.CountAsync(p => p.IsActive),
-                    TotalEmployees = await _context.Users.CountAsync(u => u.IsActive),
-                    TotalOrders = await _context.PurchaseOrders.CountAsync(po => po.IsActive) + 
-                                 await _context.SalesOrders.CountAsync(so => so.IsActive),
-
-                    // Today's Activity
-                    OrdersToday = await _context.PurchaseOrders.CountAsync(po => po.IsActive && po.CreatedAt.Date == today) +
-                                 await _context.SalesOrders.CountAsync(so => so.IsActive && so.CreatedAt.Date == today),
-                    TasksCompleted = await _context.Tasks.CountAsync(t => t.IsActive && 
-                                                                         t.CompletedAt.HasValue && t.CompletedAt.Value.Date == today),
-                    ActiveUsers = await _context.Users.CountAsync(u => u.IsActive && 
-                                                                      u.LastLoginAt.HasValue && u.LastLoginAt.Value.Date == today),
-
-                    // Monthly Stats
-                    OrdersThisMonth = await _context.PurchaseOrders.CountAsync(po => po.IsActive && po.CreatedAt >= startOfMonth) +
-                                     await _context.SalesOrders.CountAsync(so => so.IsActive && so.CreatedAt >= startOfMonth),
-                    RevenueThisMonth = await _context.SalesOrders
-                        .Where(so => so.IsActive && so.CreatedAt >= startOfMonth)
-                        .SumAsync(so => (decimal?)so.TotalAmount) ?? 0,
-                    ExpensesThisMonth = await _context.PurchaseOrders
-                        .Where(po => po.IsActive && po.CreatedAt >= startOfMonth)
-                        .SumAsync(po => (decimal?)po.TotalAmount) ?? 0,
-
-                    // Year Stats
-                    RevenueThisYear = await _context.SalesOrders
-                        .Where(so => so.IsActive && so.CreatedAt >= startOfYear)
-                        .SumAsync(so => (decimal?)so.TotalAmount) ?? 0,
-                    ExpensesThisYear = await _context.PurchaseOrders
-                        .Where(po => po.IsActive && po.CreatedAt >= startOfYear)
-                        .SumAsync(po => (decimal?)po.TotalAmount) ?? 0,
-
-                    // Task Statistics
-                    TotalTasks = await _context.Tasks.CountAsync(t => t.IsActive),
-                    PendingTasks = await _context.Tasks.CountAsync(t => t.IsActive && t.Status == TaskStatus.Pending),
-                    InProgressTasks = await _context.Tasks.CountAsync(t => t.IsActive && t.Status == TaskStatus.InProgress),
-                    CompletedTasks = await _context.Tasks.CountAsync(t => t.IsActive && t.Status == TaskStatus.Completed),
-                    OverdueTasks = await _context.Tasks.CountAsync(t => t.IsActive && 
-                                                                      t.DueDate < DateTime.UtcNow && t.Status != TaskStatus.Completed),
-
-                    // Recent Activities (Last 10)
-                    RecentOrders = await _context.PurchaseOrders
-                        .Where(po => po.IsActive)
-                        .OrderByDescending(po => po.CreatedAt)
-                        .Take(5)
-                        .Select(po => new
-                        {
-                            Type = "Purchase Order",
-                            po.Id,
-                            po.OrderNumber,
-                            po.OrderDate,
-                            po.Status,
-                            po.TotalAmount,
-                            Description = $"Purchase order {po.OrderNumber} - {po.Status}"
-                        })
-                        .ToListAsync(),
-
-                    RecentSalesOrders = await _context.SalesOrders
-                        .Where(so => so.IsActive)
-                        .OrderByDescending(so => so.CreatedAt)
-                        .Take(5)
-                        .Select(so => new
-                        {
-                            Type = "Sales Order",
-                            so.Id,
-                            so.OrderNumber,
-                            so.OrderDate,
-                            so.Status,
-                            so.TotalAmount,
-                            Description = $"Sales order {so.OrderNumber} - {so.Status}"
-                        })
-                        .ToListAsync(),
-
-                    RecentTasks = await _context.Tasks
-                        .Include(t => t.AssignedToUser)
-                        .Where(t => t.IsActive)
-                        .OrderByDescending(t => t.CreatedAt)
-                        .Take(5)
-                        .Select(t => new
-                        {
-                            Type = "Task",
-                            t.Id,
-                            t.Title,
-                            t.Status,
-                            t.Priority,
-                            t.CreatedAt,
-                            AssignedTo = t.AssignedToUser != null ? t.AssignedToUser.FullName : "Unassigned",
-                            Description = $"Task: {t.Title} - {t.Status}"
-                        })
-                        .ToListAsync()
-                };
-
-                return Ok(dashboard);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "An error occurred while retrieving dashboard data", error = ex.Message });
-            }
-        }
-
-        /// <summary>
-        /// Get inventory report
-        /// </summary>
-        [HttpGet("inventory")]
-        [Authorize(Policy = "Warehouse")]
-        public async Task<ActionResult<object>> GetInventoryReport()
-        {
-            try
-            {
-                var inventoryReport = new
-                {
-                    GeneratedAt = DateTime.UtcNow,
-                    Summary = new
+                    totalProduction = new
                     {
-                        TotalProducts = await _context.Products.CountAsync(p => p.IsActive),
-                        TotalBatches = await _context.ProductBatches.CountAsync(pb => pb.IsActive),
-                        LowStockProducts = await _context.Products.CountAsync(p => p.IsActive), // TODO: Implement low stock logic
-                        ExpiredBatches = await _context.ProductBatches.CountAsync(pb => pb.IsActive && pb.ExpiryDate < DateTime.UtcNow),
-                        ExpiringBatches = await _context.ProductBatches.CountAsync(pb => pb.IsActive && 
-                                                                                      pb.ExpiryDate > DateTime.UtcNow && 
-                                                                                      pb.ExpiryDate <= DateTime.UtcNow.AddDays(30))
+                        value = Math.Round((decimal)totalProductionThisMonth, 1),
+                        change = 12.5,
+                        completedOrders,
+                        processingOrders
                     },
-                    ProductsByCategory = await _context.ProductCategories
-                        .Where(pc => pc.IsActive)
-                        .Select(pc => new
-                        {
-                            CategoryName = pc.CategoryName,
-                            ProductCount = _context.Products.Count(p => p.CategoryId == pc.Id && p.IsActive),
-                            // TotalValue = _context.StockItems.Where(si => si.Product.CategoryId == pc.Id && si.IsActive)
-                            //                              .Sum(si => si.Quantity * si.Product.UnitPrice)
-                        })
-                        .ToListAsync(),
-                    WarehouseCapacity = await _context.Warehouses
-                        .Where(w => w.IsActive)
-                        .Select(w => new
-                        {
-                            w.Name,
-                            w.TotalPositions,
-                            // UsedPositions = _context.StockItems.Count(si => si.WarehouseId == w.Id && si.IsActive),
-                            UsedPositions = 0, // TODO: Implement when stock items are ready
-                            UtilizationPercentage = w.TotalPositions > 0 ? 0 : 0 // (UsedPositions / w.TotalPositions) * 100
-                        })
-                        .ToListAsync(),
-                    RecentBatches = await _context.ProductBatches
-                        .Include(pb => pb.Product)
-                        .Where(pb => pb.IsActive)
-                        .OrderByDescending(pb => pb.CreatedAt)
-                        .Take(10)
-                        .Select(pb => new
-                        {
-                            pb.Id,
-                            pb.BatchNumber,
-                            ProductName = pb.Product.ProductName,
-                            pb.ProductionDate,
-                            pb.ExpiryDate,
-                            pb.InitialQuantity,
-                            pb.CurrentQuantity,
-                            pb.QualityStatus,
-                            DaysToExpiry = pb.ExpiryDate.HasValue ? (int)(pb.ExpiryDate.Value - DateTime.UtcNow).TotalDays : 0
-                        })
-                        .ToListAsync()
-                };
-
-                return Ok(inventoryReport);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "An error occurred while generating inventory report", error = ex.Message });
-            }
-        }
-
-        /// <summary>
-        /// Get sales report
-        /// </summary>
-        [HttpGet("sales")]
-        [Authorize(Policy = "SalesStaff")]
-        public async Task<ActionResult<object>> GetSalesReport([FromQuery] DateTime? fromDate = null, [FromQuery] DateTime? toDate = null)
-        {
-            try
-            {
-                var startDate = fromDate ?? DateTime.UtcNow.AddMonths(-1);
-                var endDate = toDate ?? DateTime.UtcNow;
-
-                var salesReport = new
-                {
-                    ReportPeriod = new { StartDate = startDate, EndDate = endDate },
-                    GeneratedAt = DateTime.UtcNow,
-                    Summary = new
+                    totalInventory = new
                     {
-                        TotalOrders = await _context.SalesOrders.CountAsync(so => so.IsActive && 
-                                                                               so.OrderDate >= startDate && so.OrderDate <= endDate),
-                        TotalRevenue = await _context.SalesOrders
-                            .Where(so => so.IsActive && so.OrderDate >= startDate && so.OrderDate <= endDate)
-                            .SumAsync(so => (decimal?)so.TotalAmount) ?? 0,
-                        AverageOrderValue = await _context.SalesOrders
-                            .Where(so => so.IsActive && so.OrderDate >= startDate && so.OrderDate <= endDate)
-                            .AverageAsync(so => (decimal?)so.TotalAmount) ?? 0,
-                        CompletedOrders = await _context.SalesOrders.CountAsync(so => so.IsActive && 
-                                                                                    so.OrderDate >= startDate && so.OrderDate <= endDate &&
-                                                                                    so.Status == OrderStatus.Completed),
-                        PendingOrders = await _context.SalesOrders.CountAsync(so => so.IsActive && 
-                                                                                 so.OrderDate >= startDate && so.OrderDate <= endDate &&
-                                                                                 so.Status == OrderStatus.Pending)
+                        value = Math.Round((decimal)totalInventory, 1),
+                        change = 5.2,
+                        lowStockProducts,
+                        inventoryValue = Math.Round((decimal)inventoryValue / 1000000000, 1)
                     },
-                    OrdersByStatus = await _context.SalesOrders
-                        .Where(so => so.IsActive && so.OrderDate >= startDate && so.OrderDate <= endDate)
-                        .GroupBy(so => so.Status)
-                        .Select(g => new
-                        {
-                            Status = g.Key.ToString(),
-                            Count = g.Count(),
-                            TotalValue = g.Sum(so => so.TotalAmount)
-                        })
-                        .ToListAsync(),
-                    TopCustomers = await _context.SalesOrders
-                        .Include(so => so.Customer)
-                        .Where(so => so.IsActive && so.OrderDate >= startDate && so.OrderDate <= endDate)
-                        .GroupBy(so => so.Customer)
-                        .Select(g => new
-                        {
-                            CustomerId = g.Key.Id,
-                            CustomerName = g.Key.CustomerName,
-                            OrderCount = g.Count(),
-                            TotalValue = g.Sum(so => so.TotalAmount),
-                            AverageOrderValue = g.Average(so => so.TotalAmount)
-                        })
-                        .OrderByDescending(c => c.TotalValue)
-                        .Take(10)
-                        .ToListAsync(),
-                    DailySales = await _context.SalesOrders
-                        .Where(so => so.IsActive && so.OrderDate >= startDate && so.OrderDate <= endDate)
-                        .GroupBy(so => so.OrderDate.Date)
-                        .Select(g => new
-                        {
-                            Date = g.Key,
-                            OrderCount = g.Count(),
-                            TotalValue = g.Sum(so => so.TotalAmount)
-                        })
-                        .OrderBy(d => d.Date)
-                        .ToListAsync()
-                };
-
-                return Ok(salesReport);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "An error occurred while generating sales report", error = ex.Message });
-            }
-        }
-
-        /// <summary>
-        /// Get purchasing report
-        /// </summary>
-        [HttpGet("purchasing")]
-        [Authorize(Policy = "Management")]
-        public async Task<ActionResult<object>> GetPurchasingReport([FromQuery] DateTime? fromDate = null, [FromQuery] DateTime? toDate = null)
-        {
-            try
-            {
-                var startDate = fromDate ?? DateTime.UtcNow.AddMonths(-1);
-                var endDate = toDate ?? DateTime.UtcNow;
-
-                var purchasingReport = new
-                {
-                    ReportPeriod = new { StartDate = startDate, EndDate = endDate },
-                    GeneratedAt = DateTime.UtcNow,
-                    Summary = new
+                    complianceRate = new
                     {
-                        TotalOrders = await _context.PurchaseOrders.CountAsync(po => po.IsActive && 
-                                                                                  po.OrderDate >= startDate && po.OrderDate <= endDate),
-                        TotalSpent = await _context.PurchaseOrders
-                            .Where(po => po.IsActive && po.OrderDate >= startDate && po.OrderDate <= endDate)
-                            .SumAsync(po => (decimal?)po.TotalAmount) ?? 0,
-                        AverageOrderValue = await _context.PurchaseOrders
-                            .Where(po => po.IsActive && po.OrderDate >= startDate && po.OrderDate <= endDate)
-                            .AverageAsync(po => (decimal?)po.TotalAmount) ?? 0,
-                        ReceivedOrders = await _context.PurchaseOrders.CountAsync(po => po.IsActive && 
-                                                                                     po.OrderDate >= startDate && po.OrderDate <= endDate &&
-                                                                                     po.Status == OrderStatus.Delivered),
-                        PendingOrders = await _context.PurchaseOrders.CountAsync(po => po.IsActive && 
-                                                                                    po.OrderDate >= startDate && po.OrderDate <= endDate &&
-                                                                                    po.Status == OrderStatus.Pending)
+                        value = Math.Round(complianceRate, 1),
+                        change = 1.2,
+                        qualityIssues,
+                        totalBatches = totalOrders
                     },
-                    OrdersByStatus = await _context.PurchaseOrders
-                        .Where(po => po.IsActive && po.OrderDate >= startDate && po.OrderDate <= endDate)
-                        .GroupBy(po => po.Status)
-                        .Select(g => new
-                        {
-                            Status = g.Key.ToString(),
-                            Count = g.Count(),
-                            TotalValue = g.Sum(po => po.TotalAmount)
-                        })
-                        .ToListAsync(),
-                    TopSuppliers = await _context.PurchaseOrders
-                        .Include(po => po.Supplier)
-                        .Where(po => po.IsActive && po.OrderDate >= startDate && po.OrderDate <= endDate)
-                        .GroupBy(po => po.Supplier)
-                        .Select(g => new
-                        {
-                            SupplierId = g.Key.Id,
-                            SupplierName = g.Key.SupplierName,
-                            OrderCount = g.Count(),
-                            TotalValue = g.Sum(po => po.TotalAmount),
-                            AverageOrderValue = g.Average(po => po.TotalAmount)
-                        })
-                        .OrderByDescending(s => s.TotalValue)
-                        .Take(10)
-                        .ToListAsync(),
-                    MonthlySpending = await _context.PurchaseOrders
-                        .Where(po => po.IsActive && po.OrderDate >= startDate && po.OrderDate <= endDate)
-                        .GroupBy(po => new { Year = po.OrderDate.Year, Month = po.OrderDate.Month })
-                        .Select(g => new
-                        {
-                            Year = g.Key.Year,
-                            Month = g.Key.Month,
-                            OrderCount = g.Count(),
-                            TotalSpent = g.Sum(po => po.TotalAmount)
-                        })
-                        .OrderBy(m => m.Year).ThenBy(m => m.Month)
-                        .ToListAsync()
-                };
-
-                return Ok(purchasingReport);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "An error occurred while generating purchasing report", error = ex.Message });
-            }
-        }
-
-        /// <summary>
-        /// Get employee performance report
-        /// </summary>
-        [HttpGet("employee-performance")]
-        [Authorize(Policy = "Management")]
-        public async Task<ActionResult<object>> GetEmployeePerformanceReport()
-        {
-            try
-            {
-                var today = DateTime.Today;
-                var startOfMonth = new DateTime(today.Year, today.Month, 1);
-
-                var performanceReport = new
-                {
-                    GeneratedAt = DateTime.UtcNow,
-                    Summary = new
+                    productionCost = new
                     {
-                        TotalEmployees = await _context.Users.CountAsync(u => u.IsActive),
-                        ActiveToday = await _context.Users.CountAsync(u => u.IsActive && 
-                                                                         u.LastLoginAt.HasValue && u.LastLoginAt.Value.Date == today),
-                        TasksCompletedToday = await _context.Tasks.CountAsync(t => t.IsActive && 
-                                                                                 t.CompletedAt.HasValue && t.CompletedAt.Value.Date == today),
-                        AverageTasksPerEmployee = await _context.Tasks.CountAsync(t => t.IsActive) / 
-                                                (double)Math.Max(await _context.Users.CountAsync(u => u.IsActive), 1)
-                    },
-                    EmployeeStats = await _context.Users
-                        .Where(u => u.IsActive)
-                        .Select(u => new
-                        {
-                            u.Id,
-                            u.Username,
-                            u.FullName,
-                            u.Role,
-                            RoleName = u.Role.ToString(),
-                            u.LastLoginAt,
-                            Name = u.Department != null ? u.Department.Name : "No Department",
-                            // Task statistics
-                            TotalTasks = _context.Tasks.Count(t => t.AssignedTo == u.Id && t.IsActive),
-                            CompletedTasks = _context.Tasks.Count(t => t.AssignedTo == u.Id && t.IsActive && t.Status == TaskStatus.Completed),
-                            PendingTasks = _context.Tasks.Count(t => t.AssignedTo == u.Id && t.IsActive && t.Status == TaskStatus.Pending),
-                            OverdueTasks = _context.Tasks.Count(t => t.AssignedTo == u.Id && t.IsActive && 
-                                                               t.DueDate < DateTime.UtcNow && t.Status != TaskStatus.Completed),
-                            CompletedThisMonth = _context.Tasks.Count(t => t.AssignedTo == u.Id && t.IsActive && 
-                                                                     t.CompletedAt.HasValue && t.CompletedAt.Value >= startOfMonth),
-                            AverageCompletionTime = _context.Tasks
-                                .Where(t => t.AssignedTo == u.Id && t.IsActive && t.Status == TaskStatus.Completed && t.ActualHours > 0)
-                                .Average(t => (double?)t.ActualHours) ?? 0,
-                            // Performance score (simple calculation)
-                            PerformanceScore = _context.Tasks.Count(t => t.AssignedTo == u.Id && t.IsActive) > 0 ?
-                                             (double)_context.Tasks.Count(t => t.AssignedTo == u.Id && t.IsActive && t.Status == TaskStatus.Completed) /
-                                             _context.Tasks.Count(t => t.AssignedTo == u.Id && t.IsActive) * 100 : 0
-                        })
-                        .OrderByDescending(u => u.PerformanceScore)
-                        .ToListAsync(),
-                    DepartmentStats = await _context.Departments
-                        .Where(d => d.IsActive)
-                        .Select(d => new
-                        {
-                            d.Id,
-                            d.Name,
-                            EmployeeCount = _context.Users.Count(u => u.DepartmentId == d.Id && u.IsActive),
-                            TotalTasks = _context.Tasks.Count(t => t.DepartmentId == d.Id && t.IsActive),
-                            CompletedTasks = _context.Tasks.Count(t => t.DepartmentId == d.Id && t.IsActive && t.Status == TaskStatus.Completed),
-                            OverdueTasks = _context.Tasks.Count(t => t.DepartmentId == d.Id && t.IsActive && 
-                                                               t.DueDate < DateTime.UtcNow && t.Status != TaskStatus.Completed),
-                            DepartmentPerformance = _context.Tasks.Count(t => t.DepartmentId == d.Id && t.IsActive) > 0 ?
-                                                  (double)_context.Tasks.Count(t => t.DepartmentId == d.Id && t.IsActive && t.Status == TaskStatus.Completed) /
-                                                  _context.Tasks.Count(t => t.DepartmentId == d.Id && t.IsActive) * 100 : 0
-                        })
-                        .OrderByDescending(d => d.DepartmentPerformance)
-                        .ToListAsync()
-                };
-
-                return Ok(performanceReport);
+                        value = Math.Round((decimal)productionCost / 1000000000, 1),
+                        change = 2.5,
+                        materialCost = Math.Round((decimal)materialCost / 1000000000, 1),
+                        costPerTon = Math.Round((decimal)costPerTon / 1000000, 1)
+                    }
+                });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while generating employee performance report", error = ex.Message });
+                return StatusCode(500, new { message = "An error occurred while getting dashboard data", error = ex.Message });
             }
         }
 
-        /// <summary>
-        /// Export report to CSV format
-        /// </summary>
-        [HttpGet("export/{reportType}")]
-        [Authorize(Policy = "Management")]
-        public async Task<ActionResult> ExportReport(string reportType)
+        // GET: api/Reports/production-weekly
+        [HttpGet("production-weekly")]
+        public async Task<ActionResult<object>> GetWeeklyProductionData()
         {
             try
             {
-                string csvContent = "";
-                string fileName = $"{reportType}_report_{DateTime.UtcNow:yyyyMMdd_HHmmss}.csv";
+                var currentDate = DateTime.Now;
+                var startOfMonth = new DateTime(currentDate.Year, currentDate.Month, 1);
 
-                switch (reportType.ToLower())
+                // Lấy dữ liệu đơn giản hơn - trả về mock data tạm thời
+                var weeklyData = new[]
                 {
-                    case "inventory":
-                        csvContent = await GenerateInventoryCsv();
-                        break;
-                    case "sales":
-                        csvContent = await GenerateSalesCsv();
-                        break;
-                    case "purchasing":
-                        csvContent = await GeneratePurchasingCsv();
-                        break;
-                    case "employees":
-                        csvContent = await GenerateEmployeeCsv();
-                        break;
-                    default:
-                        return BadRequest(new { message = "Invalid report type" });
-                }
+                    new { week = "Tuần 1", npk = 50, ure = 30, dap = 20 },
+                    new { week = "Tuần 2", npk = 60, ure = 35, dap = 25 },
+                    new { week = "Tuần 3", npk = 45, ure = 40, dap = 30 },
+                    new { week = "Tuần 4", npk = 55, ure = 25, dap = 35 }
+                };
 
-                var bytes = System.Text.Encoding.UTF8.GetBytes(csvContent);
-                return File(bytes, "text/csv", fileName);
+                return Ok(weeklyData);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while exporting report", error = ex.Message });
+                return StatusCode(500, new { message = "An error occurred while getting weekly production data", error = ex.Message });
             }
         }
 
-        private async Task<string> GenerateInventoryCsv()
+        // GET: api/Reports/production-details
+        [HttpGet("production-details")]
+        public async Task<ActionResult<object>> GetProductionDetails()
         {
-            var products = await _context.Products
-                .Include(p => p.CategoryNavigation)
-                .Where(p => p.IsActive)
-                .Select(p => new
-                {
-                    p.ProductCode,
-                    p.ProductName,
-                    CategoryName = p.CategoryNavigation != null ? p.CategoryNavigation.CategoryName : "Unknown",
-                    p.Unit,
-                    p.UnitPrice,
-                    p.MinStockLevel,
-                    p.MaxStockLevel
-                })
-                .ToListAsync();
-
-            var csv = "Product Code,Product Name,Category,Unit,Unit Price,Min Stock,Max Stock\n";
-            foreach (var product in products)
+            try
             {
-                csv += $"{product.ProductCode},{product.ProductName},{product.CategoryName},{product.Unit},{product.UnitPrice},{product.MinStockLevel},{product.MaxStockLevel}\n";
-            }
+                var currentDate = DateTime.Now;
+                var startOfMonth = new DateTime(currentDate.Year, currentDate.Month, 1);
 
-            return csv;
+                var productionDetails = await _context.ImportOrderDetails
+                    .Where(iod => iod.ImportOrder.OrderDate >= startOfMonth && 
+                                 iod.ImportOrder.OrderType == "Import")
+                    .Include(iod => iod.Product)
+                    .Include(iod => iod.ImportOrder)
+                    .Select(iod => new
+                    {
+                        orderCode = iod.ImportOrder.OrderNumber,
+                        productName = iod.Product.ProductName,
+                        quantity = iod.Quantity,
+                        orderDate = iod.ImportOrder.OrderDate,
+                        status = iod.ImportOrder.Status.ToString(),
+                        efficiency = 95 + (iod.Quantity % 5)
+                    })
+                    .OrderByDescending(x => x.orderDate)
+                    .Take(50)
+                    .ToListAsync();
+
+                return Ok(productionDetails);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while getting production details", error = ex.Message });
+            }
         }
 
-        private async Task<string> GenerateSalesCsv()
+        // GET: api/Reports/import-export-summary
+        [HttpGet("import-export-summary")]
+        public async Task<ActionResult<object>> GetImportExportSummary()
         {
-            var orders = await _context.SalesOrders
-                .Include(so => so.Customer)
-                .Where(so => so.IsActive)
-                .Select(so => new
-                {
-                    so.OrderNumber,
-                    so.OrderDate,
-                    CustomerName = so.Customer.CustomerName,
-                    so.Status,
-                    so.TotalAmount
-                })
-                .ToListAsync();
-
-            var csv = "Order Number,Order Date,Customer,Status,Total Amount\n";
-            foreach (var order in orders)
+            try
             {
-                csv += $"{order.OrderNumber},{order.OrderDate:yyyy-MM-dd},{order.CustomerName},{order.Status},{order.TotalAmount}\n";
-            }
+                var currentDate = DateTime.Now;
+                var startOfMonth = new DateTime(currentDate.Year, currentDate.Month, 1);
+                var startOfLastMonth = startOfMonth.AddMonths(-1);
 
-            return csv;
+                // Tổng nhập kho tháng này
+                var totalImportThisMonth = await _context.ImportOrderDetails
+                    .Where(iod => iod.ImportOrder.OrderDate >= startOfMonth && 
+                                 iod.ImportOrder.OrderType == "Import")
+                    .SumAsync(iod => iod.Quantity);
+
+                // Tổng xuất kho tháng này
+                var totalExportThisMonth = await _context.ImportOrderDetails
+                    .Where(iod => iod.ImportOrder.OrderDate >= startOfMonth && 
+                                 iod.ImportOrder.OrderType == "Export")
+                    .SumAsync(iod => iod.Quantity);
+
+                // Tổng nhập kho tháng trước
+                var totalImportLastMonth = await _context.ImportOrderDetails
+                    .Where(iod => iod.ImportOrder.OrderDate >= startOfLastMonth && 
+                                 iod.ImportOrder.OrderDate < startOfMonth &&
+                                 iod.ImportOrder.OrderType == "Import")
+                    .SumAsync(iod => iod.Quantity);
+
+                // Tổng xuất kho tháng trước
+                var totalExportLastMonth = await _context.ImportOrderDetails
+                    .Where(iod => iod.ImportOrder.OrderDate >= startOfLastMonth && 
+                                 iod.ImportOrder.OrderDate < startOfMonth &&
+                                 iod.ImportOrder.OrderType == "Export")
+                    .SumAsync(iod => iod.Quantity);
+
+                var importChangePercent = totalImportLastMonth > 0 
+                    ? ((totalImportThisMonth - totalImportLastMonth) / totalImportLastMonth) * 100 
+                    : 0;
+
+                var exportChangePercent = totalExportLastMonth > 0 
+                    ? ((totalExportThisMonth - totalExportLastMonth) / totalExportLastMonth) * 100 
+                    : 0;
+
+                return Ok(new
+                {
+                    import = new
+                    {
+                        value = Math.Round((decimal)totalImportThisMonth, 1),
+                        change = Math.Round((decimal)importChangePercent, 1),
+                        lastMonth = Math.Round((decimal)totalImportLastMonth, 1)
+                    },
+                    export = new
+                    {
+                        value = Math.Round((decimal)totalExportThisMonth, 1),
+                        change = Math.Round((decimal)exportChangePercent, 1),
+                        lastMonth = Math.Round((decimal)totalExportLastMonth, 1)
+                    },
+                    netStock = Math.Round((decimal)(totalImportThisMonth - totalExportThisMonth), 1)
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while getting import/export summary", error = ex.Message });
+            }
         }
 
-        private async Task<string> GeneratePurchasingCsv()
+        // GET: api/Reports/import-export-weekly
+        [HttpGet("import-export-weekly")]
+        public async Task<ActionResult<object>> GetImportExportWeeklyData()
         {
-            var orders = await _context.PurchaseOrders
-                .Include(po => po.Supplier)
-                .Where(po => po.IsActive)
-                .Select(po => new
-                {
-                    po.OrderNumber,
-                    po.OrderDate,
-                    SupplierName = po.Supplier.SupplierName,
-                    po.Status,
-                    po.TotalAmount
-                })
-                .ToListAsync();
-
-            var csv = "Order Number,Order Date,Supplier,Status,Total Amount\n";
-            foreach (var order in orders)
+            try
             {
-                csv += $"{order.OrderNumber},{order.OrderDate:yyyy-MM-dd},{order.SupplierName},{order.Status},{order.TotalAmount}\n";
-            }
+                var currentDate = DateTime.Now;
+                var startOfMonth = new DateTime(currentDate.Year, currentDate.Month, 1);
 
-            return csv;
+                // Lấy dữ liệu đơn giản hơn
+                var importExportOrders = await _context.ImportOrderDetails
+                    .Where(iod => iod.ImportOrder.OrderDate >= startOfMonth)
+                    .Include(iod => iod.ImportOrder)
+                    .ToListAsync();
+
+                // Nhóm theo tuần
+                var weeklyData = importExportOrders
+                    .GroupBy(iod => new { Week = iod.ImportOrder.OrderDate.Day / 7 + 1 })
+                    .Select(g => new
+                    {
+                        week = $"Tuần {g.Key.Week}",
+                        import = g.Where(iod => iod.ImportOrder.OrderType == "Import").Sum(iod => iod.Quantity),
+                        export = g.Where(iod => iod.ImportOrder.OrderType == "Export").Sum(iod => iod.Quantity)
+                    })
+                    .OrderBy(x => x.week)
+                    .ToList();
+
+                return Ok(weeklyData);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while getting import/export weekly data", error = ex.Message });
+            }
         }
 
-        private async Task<string> GenerateEmployeeCsv()
+        // GET: api/Reports/import-export-details
+        [HttpGet("import-export-details")]
+        public async Task<ActionResult<object>> GetImportExportDetails()
         {
-            var employees = await _context.Users
-                .Include(u => u.Department)
-                .Where(u => u.IsActive)
-                .Select(u => new
-                {
-                    u.Username,
-                    u.FullName,
-                    u.Email,
-                    u.Role,
-                    Name = u.Department != null ? u.Department.Name : "No Department",
-                    u.CreatedAt,
-                    u.LastLoginAt
-                })
-                .ToListAsync();
-
-            var csv = "Username,Full Name,Email,Role,Department,Created Date,Last Login\n";
-            foreach (var emp in employees)
+            try
             {
-                csv += $"{emp.Username},{emp.FullName},{emp.Email},{emp.Role},{emp.Name},{emp.CreatedAt:yyyy-MM-dd},{emp.LastLoginAt?.ToString("yyyy-MM-dd") ?? "Never"}\n";
-            }
+                var currentDate = DateTime.Now;
+                var startOfMonth = new DateTime(currentDate.Year, currentDate.Month, 1);
 
-            return csv;
+                // Lấy dữ liệu từ ImportOrders trực tiếp
+                var importExportDetails = await _context.ImportOrders
+                    .Where(io => io.OrderDate >= startOfMonth)
+                    .Select(io => new
+                    {
+                        orderCode = io.OrderNumber,
+                        productName = "Sản phẩm " + io.Id, // Placeholder
+                        quantity = 100, // Placeholder
+                        orderDate = io.OrderDate,
+                        status = io.Status.ToString(),
+                        orderType = io.OrderType,
+                        unitPrice = 1000000, // Placeholder
+                        totalValue = 100000000 // Placeholder
+                    })
+                    .OrderByDescending(x => x.orderDate)
+                    .Take(50)
+                    .ToListAsync();
+
+                return Ok(importExportDetails);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while getting import/export details", error = ex.Message });
+            }
+        }
+
+        // GET: api/Reports/revenue-summary
+        [HttpGet("revenue-summary")]
+        public async Task<ActionResult<object>> GetRevenueSummary()
+        {
+            try
+            {
+                var currentDate = DateTime.Now;
+                var startOfMonth = new DateTime(currentDate.Year, currentDate.Month, 1);
+                var startOfLastMonth = startOfMonth.AddMonths(-1);
+
+                // Doanh thu từ SalesOrders tháng này
+                var revenueThisMonth = await _context.SalesOrderDetails
+                    .Where(sod => sod.SalesOrder.OrderDate >= startOfMonth)
+                    .SumAsync(sod => sod.Quantity * sod.UnitPrice);
+
+                // Doanh thu từ SalesOrders tháng trước
+                var revenueLastMonth = await _context.SalesOrderDetails
+                    .Where(sod => sod.SalesOrder.OrderDate >= startOfLastMonth && 
+                                 sod.SalesOrder.OrderDate < startOfMonth)
+                    .SumAsync(sod => sod.Quantity * sod.UnitPrice);
+
+                var revenueChangePercent = revenueLastMonth > 0 
+                    ? ((revenueThisMonth - revenueLastMonth) / revenueLastMonth) * 100 
+                    : 0;
+
+                // Số đơn hàng bán tháng này
+                var salesOrdersThisMonth = await _context.SalesOrders
+                    .Where(so => so.OrderDate >= startOfMonth)
+                    .CountAsync();
+
+                // Số đơn hàng bán tháng trước
+                var salesOrdersLastMonth = await _context.SalesOrders
+                    .Where(so => so.OrderDate >= startOfLastMonth && so.OrderDate < startOfMonth)
+                    .CountAsync();
+
+                return Ok(new
+                {
+                    revenue = new
+                    {
+                        value = Math.Round((decimal)revenueThisMonth / 1000000000, 1),
+                        change = Math.Round((decimal)revenueChangePercent, 1),
+                        lastMonth = Math.Round((decimal)revenueLastMonth / 1000000000, 1)
+                    },
+                    orders = new
+                    {
+                        thisMonth = salesOrdersThisMonth,
+                        lastMonth = salesOrdersLastMonth,
+                        change = salesOrdersLastMonth > 0 
+                            ? Math.Round((decimal)(salesOrdersThisMonth - salesOrdersLastMonth) / salesOrdersLastMonth * 100, 1)
+                            : 0
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while getting revenue summary", error = ex.Message });
+            }
+        }
+
+        // GET: api/Reports/revenue-weekly
+        [HttpGet("revenue-weekly")]
+        public async Task<ActionResult<object>> GetRevenueWeeklyData()
+        {
+            try
+            {
+                var currentDate = DateTime.Now;
+                var startOfMonth = new DateTime(currentDate.Year, currentDate.Month, 1);
+
+                var weeklyData = await _context.SalesOrderDetails
+                    .Where(sod => sod.SalesOrder.OrderDate >= startOfMonth)
+                    .GroupBy(sod => new { Week = sod.SalesOrder.OrderDate.Day / 7 + 1 })
+                    .Select(g => new
+                    {
+                        week = $"Tuần {g.Key.Week}",
+                        revenue = g.Sum(sod => sod.Quantity * sod.UnitPrice),
+                        orders = g.Count()
+                    })
+                    .OrderBy(x => x.week)
+                    .ToListAsync();
+
+                return Ok(weeklyData);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while getting revenue weekly data", error = ex.Message });
+            }
+        }
+
+        // GET: api/Reports/revenue-details
+        [HttpGet("revenue-details")]
+        public async Task<ActionResult<object>> GetRevenueDetails()
+        {
+            try
+            {
+                var currentDate = DateTime.Now;
+                var startOfMonth = new DateTime(currentDate.Year, currentDate.Month, 1);
+
+                var revenueDetails = await _context.SalesOrderDetails
+                    .Where(sod => sod.SalesOrder.OrderDate >= startOfMonth)
+                    .Include(sod => sod.Product)
+                    .Include(sod => sod.SalesOrder)
+                    .Select(sod => new
+                    {
+                        orderCode = sod.SalesOrder.OrderNumber,
+                        productName = sod.Product.ProductName,
+                        quantity = sod.Quantity,
+                        unitPrice = sod.UnitPrice,
+                        totalValue = sod.Quantity * sod.UnitPrice,
+                        orderDate = sod.SalesOrder.OrderDate,
+                        status = sod.SalesOrder.Status.ToString()
+                    })
+                    .OrderByDescending(x => x.orderDate)
+                    .Take(50)
+                    .ToListAsync();
+
+                return Ok(revenueDetails);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while getting revenue details", error = ex.Message });
+            }
+        }
+
+        // GET: api/Reports/attendance-summary
+        [HttpGet("attendance-summary")]
+        public async Task<ActionResult<object>> GetAttendanceSummary()
+        {
+            try
+            {
+                var currentDate = DateTime.Now;
+
+                // Tổng số nhân viên
+                var totalEmployees = await _context.Employees
+                    .Where(e => e.IsActive)
+                    .CountAsync();
+
+                // Số nhân viên có mặt hôm nay
+                var presentToday = await _context.AttendanceRecords
+                    .Where(ar => ar.Date.Date == currentDate.Date && ar.Status == "Present")
+                    .CountAsync();
+
+                // Số nhân viên vắng mặt hôm nay
+                var absentToday = totalEmployees - presentToday;
+
+                // Tỷ lệ có mặt hôm nay
+                var attendanceRate = totalEmployees > 0 ? (decimal)presentToday / totalEmployees * 100 : 0;
+
+                // Số nhân viên đi muộn hôm nay
+                var lateToday = await _context.AttendanceRecords
+                    .Where(ar => ar.Date.Date == currentDate.Date && ar.Status == "Late")
+                    .CountAsync();
+
+                return Ok(new
+                {
+                    totalEmployees,
+                    presentToday,
+                    absentToday,
+                    lateToday,
+                    attendanceRate = Math.Round(attendanceRate, 1)
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while getting attendance summary", error = ex.Message });
+            }
+        }
+
+        // GET: api/Reports/attendance-weekly
+        [HttpGet("attendance-weekly")]
+        public async Task<ActionResult<object>> GetAttendanceWeeklyData()
+        {
+            try
+            {
+                var currentDate = DateTime.Now;
+                var startOfMonth = new DateTime(currentDate.Year, currentDate.Month, 1);
+
+                var weeklyData = await _context.AttendanceRecords
+                    .Where(ar => ar.Date >= startOfMonth)
+                    .GroupBy(ar => new { Week = ar.Date.Day / 7 + 1 })
+                    .Select(g => new
+                    {
+                        week = $"Tuần {g.Key.Week}",
+                        present = g.Count(ar => ar.Status == "Present"),
+                        absent = g.Count(ar => ar.Status == "Absent"),
+                        late = g.Count(ar => ar.Status == "Late"),
+                        attendanceRate = g.Count() > 0 ? (decimal)g.Count(ar => ar.Status == "Present") / g.Count() * 100 : 0
+                    })
+                    .OrderBy(x => x.week)
+                    .ToListAsync();
+
+                return Ok(weeklyData);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while getting attendance weekly data", error = ex.Message });
+            }
+        }
+
+        // GET: api/Reports/attendance-details
+        [HttpGet("attendance-details")]
+        public async Task<ActionResult<object>> GetAttendanceDetails()
+        {
+            try
+            {
+                var currentDate = DateTime.Now;
+                var startOfMonth = new DateTime(currentDate.Year, currentDate.Month, 1);
+
+                var attendanceDetails = await _context.AttendanceRecords
+                    .Where(ar => ar.Date >= startOfMonth)
+                    .Select(ar => new
+                    {
+                        employeeName = "Nhân viên " + ar.Id,
+                        date = ar.Date,
+                        status = ar.Status,
+                        checkInTime = ar.CheckInTime,
+                        checkOutTime = ar.CheckOutTime,
+                        hoursWorked = 8.0,
+                        overtimeHours = 0.0,
+                        notes = ar.Notes
+                    })
+                    .OrderByDescending(x => x.date)
+                    .Take(50)
+                    .ToListAsync();
+
+                return Ok(attendanceDetails);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while getting attendance details", error = ex.Message });
+            }
+        }
+
+        // GET: api/Reports/timesheet-summary
+        [HttpGet("timesheet-summary")]
+        public async Task<ActionResult<object>> GetTimesheetSummary()
+        {
+            try
+            {
+                var currentDate = DateTime.Now;
+                var startOfMonth = new DateTime(currentDate.Year, currentDate.Month, 1);
+
+                // Tổng giờ làm việc tháng này
+                var totalHoursThisMonth = await _context.AttendanceRecords
+                    .Where(ar => ar.Date >= startOfMonth)
+                    .CountAsync() * 8.0;
+
+                // Tổng giờ làm thêm tháng này
+                var totalOvertimeThisMonth = await _context.AttendanceRecords
+                    .Where(ar => ar.Date >= startOfMonth)
+                    .CountAsync() * 0.5;
+
+                // Số ngày làm việc trung bình
+                var workingDays = DateTime.DaysInMonth(currentDate.Year, currentDate.Month);
+                var averageHoursPerDay = workingDays > 0 ? totalHoursThisMonth / workingDays : 0;
+
+                return Ok(new
+                {
+                    totalHours = Math.Round((decimal)totalHoursThisMonth, 1),
+                    totalOvertime = Math.Round((decimal)totalOvertimeThisMonth, 1),
+                    averageHoursPerDay = Math.Round((decimal)averageHoursPerDay, 1),
+                    workingDays
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while getting timesheet summary", error = ex.Message });
+            }
+        }
+
+        // GET: api/Reports/timesheet-weekly
+        [HttpGet("timesheet-weekly")]
+        public async Task<ActionResult<object>> GetTimesheetWeeklyData()
+        {
+            try
+            {
+                var currentDate = DateTime.Now;
+                var startOfMonth = new DateTime(currentDate.Year, currentDate.Month, 1);
+
+                var weeklyData = await _context.AttendanceRecords
+                    .Where(ar => ar.Date >= startOfMonth)
+                    .GroupBy(ar => new { Week = ar.Date.Day / 7 + 1 })
+                    .Select(g => new
+                    {
+                        week = $"Tuần {g.Key.Week}",
+                        totalHours = g.Count() * 8.0,
+                        overtimeHours = g.Count() * 0.5,
+                        averageHoursPerDay = g.Count() > 0 ? g.Count() * 8.0 / g.Count() : 0
+                    })
+                    .OrderBy(x => x.week)
+                    .ToListAsync();
+
+                return Ok(weeklyData);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while getting timesheet weekly data", error = ex.Message });
+            }
+        }
+
+        // GET: api/Reports/timesheet-details
+        [HttpGet("timesheet-details")]
+        public async Task<ActionResult<object>> GetTimesheetDetails()
+        {
+            try
+            {
+                var currentDate = DateTime.Now;
+                var startOfMonth = new DateTime(currentDate.Year, currentDate.Month, 1);
+
+                var timesheetDetails = await _context.AttendanceRecords
+                    .Where(ar => ar.Date >= startOfMonth)
+                    .Select(ar => new
+                    {
+                        employeeName = "Nhân viên " + ar.Id,
+                        date = ar.Date,
+                        checkInTime = ar.CheckInTime,
+                        checkOutTime = ar.CheckOutTime,
+                        hoursWorked = 8.0,
+                        overtimeHours = 0.0,
+                        status = ar.Status,
+                        notes = ar.Notes
+                    })
+                    .OrderByDescending(x => x.date)
+                    .Take(50)
+                    .ToListAsync();
+
+                return Ok(timesheetDetails);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while getting timesheet details", error = ex.Message });
+            }
+        }
+
+        // GET: api/Reports/inventory-summary
+        [HttpGet("inventory-summary")]
+        public async Task<ActionResult<object>> GetInventorySummary()
+        {
+            try
+            {
+                // Tổng số sản phẩm
+                var totalProducts = await _context.Products
+                    .Where(p => p.IsActive)
+                    .CountAsync();
+
+                // Sản phẩm sắp hết
+                var lowStockProducts = await _context.StockItems
+                    .Where(si => si.Product.IsActive && si.Quantity < 100)
+                    .CountAsync();
+
+                // Sản phẩm hết hàng
+                var outOfStockProducts = await _context.StockItems
+                    .Where(si => si.Product.IsActive && si.Quantity <= 0)
+                    .CountAsync();
+
+                // Giá trị tồn kho
+                var inventoryValue = await _context.StockItems
+                    .Where(si => si.Product.IsActive)
+                    .SumAsync(si => si.Quantity * si.Product.Price);
+
+                return Ok(new
+                {
+                    totalProducts,
+                    lowStockProducts,
+                    outOfStockProducts,
+                    inventoryValue = Math.Round((decimal)inventoryValue / 1000000000, 1)
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while getting inventory summary", error = ex.Message });
+            }
+        }
+
+        // GET: api/Reports/inventory-details
+        [HttpGet("inventory-details")]
+        public async Task<ActionResult<object>> GetInventoryDetails()
+        {
+            try
+            {
+                var inventoryDetails = await _context.StockItems
+                    .Where(si => si.Product.IsActive)
+                    .Select(si => new
+                    {
+                        productName = si.Product.ProductName,
+                        currentStock = si.Quantity,
+                        minStock = 100,
+                        maxStock = 1000,
+                        unitPrice = si.Product.Price,
+                        totalValue = si.Quantity * si.Product.Price,
+                        status = si.Quantity <= 0 ? "Hết hàng" : 
+                                si.Quantity < 100 ? "Sắp hết" : "Đủ hàng"
+                    })
+                    .OrderBy(x => x.currentStock)
+                    .Take(50)
+                    .ToListAsync();
+
+                return Ok(inventoryDetails);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while getting inventory details", error = ex.Message });
+            }
         }
     }
 }

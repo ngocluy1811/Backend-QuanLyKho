@@ -1,19 +1,33 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace FertilizerWarehouseAPI.Models.Entities
 {
-    public class RolePermission : BaseEntity
+    public class RolePermission
     {
-        public int RoleId { get; set; }
-        public int PermissionId { get; set; }
+        [Key]
+        public int Id { get; set; }
 
-        public DateTime GrantedAt { get; set; } = DateTime.UtcNow;
-        public int? GrantedBy { get; set; }
-        public new bool IsActive { get; set; } = true;
+        [Required]
+        [StringLength(50)]
+        public string Role { get; set; } = string.Empty;
 
-        // Navigation properties
-        public virtual Role Role { get; set; } = null!;
-        public virtual Permission Permission { get; set; } = null!;
-        public virtual User? GrantedByUser { get; set; }
+        [Required]
+        [StringLength(100)]
+        public string PermissionKey { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(100)]
+        public string PermissionName { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(50)]
+        public string Module { get; set; } = string.Empty;
+
+        public bool IsEnabled { get; set; } = true;
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public DateTime? UpdatedAt { get; set; }
     }
 }

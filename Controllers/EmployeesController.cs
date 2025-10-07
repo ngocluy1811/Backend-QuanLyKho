@@ -4,8 +4,10 @@ using Microsoft.EntityFrameworkCore;
 using FertilizerWarehouseAPI.Data;
 using FertilizerWarehouseAPI.Models.Entities;
 using FertilizerWarehouseAPI.Models.Enums;
+using FertilizerWarehouseAPI.DTOs;
 using UserRole = FertilizerWarehouseAPI.Models.Enums.UserRole;
 using System.Text.Json;
+using System.ComponentModel.DataAnnotations;
 
 namespace FertilizerWarehouseAPI.Controllers
 {
@@ -48,8 +50,12 @@ namespace FertilizerWarehouseAPI.Controllers
                         u.DepartmentId,
                         DepartmentName = u.Department != null ? u.Department.Name : null,
                         u.IsActive,
+                        u.Level,
                         u.CreatedAt,
+                        u.UpdatedAt,
                         u.LastLoginAt,
+                        u.PasswordExpiresAt,
+                        u.MustChangePassword,
                         IsLocked = u.LockedUntil > DateTime.UtcNow
                     })
                     .ToListAsync();
@@ -125,6 +131,12 @@ namespace FertilizerWarehouseAPI.Controllers
                 if (existingUser)
                     return BadRequest(new { message = "Username already exists" });
 
+                // Parse role string to enum
+                if (!Enum.TryParse<UserRole>(createDto.Role, true, out var userRole))
+                {
+                    return BadRequest(new { message = "Invalid role value" });
+                }
+
                 var employee = new User
                 {
                     Username = createDto.Username,
@@ -132,13 +144,19 @@ namespace FertilizerWarehouseAPI.Controllers
                     FullName = createDto.FullName,
                     Phone = createDto.Phone,
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword(createDto.Password),
-                    Role = createDto.Role,
+                    Role = userRole,
                     CompanyId = createDto.CompanyId,
                     DepartmentId = createDto.DepartmentId,
-                    Level = createDto.Level,
+                    Level = createDto.Level ?? 1, // Default level
                     CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
                     IsActive = true,
-                    MustChangePassword = true
+                    MustChangePassword = createDto.MustChangePassword ?? true,
+                    TwoFactorEnabled = createDto.TwoFactorEnabled ?? false,
+                    // Auto-generated fields
+                    PasswordExpiresAt = createDto.PasswordExpiresAt ?? DateTime.UtcNow.AddDays(90), // Password expires in 90 days
+                    LastLoginAt = null, // No login yet
+                    LockedUntil = createDto.LockedUntil // Can be set by admin
                 };
 
                 _context.Users.Add(employee);
@@ -157,7 +175,11 @@ namespace FertilizerWarehouseAPI.Controllers
                     employee.DepartmentId,
                     employee.Level,
                     employee.IsActive,
-                    employee.CreatedAt
+                    employee.CreatedAt,
+                    employee.UpdatedAt,
+                    employee.LastLoginAt,
+                    employee.PasswordExpiresAt,
+                    employee.MustChangePassword
                 });
             }
             catch (Exception ex)
@@ -204,27 +226,64 @@ namespace FertilizerWarehouseAPI.Controllers
         {
             try
             {
+                if (updateDto == null)
+                {
+                    return BadRequest(new { message = "Request body cannot be null" });
+                }
+
                 var employee = await _context.Users.FindAsync(id);
                 if (employee == null)
                     return NotFound(new { message = "Employee not found" });
 
-                // Update fields
-                if (!string.IsNullOrEmpty(updateDto.Username))
-                    employee.Username = updateDto.Username;
-                if (!string.IsNullOrEmpty(updateDto.Email))
-                    employee.Email = updateDto.Email;
+                // Update basic fields
                 if (!string.IsNullOrEmpty(updateDto.FullName))
                     employee.FullName = updateDto.FullName;
-                if (updateDto.Phone != null)
+                if (!string.IsNullOrEmpty(updateDto.Email))
+                    employee.Email = updateDto.Email;
+                if (!string.IsNullOrEmpty(updateDto.Phone))
                     employee.Phone = updateDto.Phone;
-                if (updateDto.Role.HasValue)
-                    employee.Role = updateDto.Role.Value;
-                if (updateDto.CompanyId.HasValue)
-                    employee.CompanyId = updateDto.CompanyId.Value;
+                if (!string.IsNullOrEmpty(updateDto.Address))
+                    employee.Address = updateDto.Address;
+                if (!string.IsNullOrEmpty(updateDto.Position))
+                    employee.Position = updateDto.Position;
+                
+                // Update role if provided
+                if (!string.IsNullOrEmpty(updateDto.Role))
+                {
+                    string roleString = updateDto.Role.ToLower(System.Globalization.CultureInfo.InvariantCulture);
+                    switch (roleString)
+                    {
+                        case "admin":
+                        case "1":
+                            employee.Role = Models.Enums.UserRole.Admin;
+                            break;
+                        case "warehouse":
+                        case "2":
+                            employee.Role = Models.Enums.UserRole.Warehouse;
+                            break;
+                        case "team_leader":
+                        case "teamleader":
+                        case "3":
+                            employee.Role = Models.Enums.UserRole.TeamLeader;
+                            break;
+                        case "sales":
+                        case "employee":
+                        case "4":
+                            employee.Role = Models.Enums.UserRole.Sales;
+                            break;
+                        default:
+                            return BadRequest(new { message = $"Invalid role value: {updateDto.Role}" });
+                    }
+                }
+
+                // Update optional fields
                 if (updateDto.DepartmentId.HasValue)
                     employee.DepartmentId = updateDto.DepartmentId;
-                if (updateDto.IsActive.HasValue)
-                    employee.IsActive = updateDto.IsActive.Value;
+                
+                employee.IsActive = updateDto.IsActive;
+
+                // Update timestamp
+                employee.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
 
@@ -240,12 +299,14 @@ namespace FertilizerWarehouseAPI.Controllers
                     employee.CompanyId,
                     employee.DepartmentId,
                     employee.IsActive,
+                    employee.Level,
                     employee.CreatedAt,
-                    employee.LastLoginAt
+                    employee.UpdatedAt
                 });
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"Error updating employee: {ex.Message}");
                 return StatusCode(500, new { message = "An error occurred while updating employee", error = ex.Message });
             }
         }
@@ -441,23 +502,16 @@ namespace FertilizerWarehouseAPI.Controllers
         public string FullName { get; set; } = string.Empty;
         public string? Phone { get; set; }
         public string Password { get; set; } = string.Empty;
-        public UserRole Role { get; set; }
+        public string Role { get; set; } = string.Empty; // Changed to string
         public int CompanyId { get; set; }
         public int? DepartmentId { get; set; }
         public int? Level { get; set; }
+        public bool? MustChangePassword { get; set; }
+        public bool? TwoFactorEnabled { get; set; }
+        public DateTime? LockedUntil { get; set; }
+        public DateTime? PasswordExpiresAt { get; set; }
     }
 
-    public class UpdateEmployeeDto
-    {
-        public string? Username { get; set; }
-        public string? Email { get; set; }
-        public string? FullName { get; set; }
-        public string? Phone { get; set; }
-        public UserRole? Role { get; set; }
-        public int? CompanyId { get; set; }
-        public int? DepartmentId { get; set; }
-        public bool? IsActive { get; set; }
-    }
 
     public class UpdateStatusDto
     {
@@ -467,5 +521,31 @@ namespace FertilizerWarehouseAPI.Controllers
     public class UpdateRoleDto
     {
         public UserRole Role { get; set; }
+    }
+    
+    // Helper methods for validation
+    public static class ValidationHelpers
+    {
+        public static bool IsValidEmail(string email)
+        {
+            try
+            {
+                var addr = new System.Net.Mail.MailAddress(email);
+                return addr.Address == email;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        
+        public static bool IsValidRole(string role)
+        {
+            if (string.IsNullOrEmpty(role))
+                return true; // Allow null/empty roles for updates
+            
+            var validRoles = new[] { "admin", "warehouse", "team_leader", "teamleader", "sales", "employee", "1", "2", "3", "4" };
+            return validRoles.Contains(role.ToLower());
+        }
     }
 }

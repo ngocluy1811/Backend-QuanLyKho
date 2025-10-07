@@ -1,9 +1,20 @@
 using FertilizerWarehouseAPI.Models.Enums;
+using System.Security.Claims;
+using FertilizerWarehouseAPI.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace FertilizerWarehouseAPI.Services;
 
 public class PermissionService : IPermissionService
 {
+    private readonly ApplicationDbContext _context;
+    private readonly ILogger<PermissionService> _logger;
+
+    public PermissionService(ApplicationDbContext context, ILogger<PermissionService> logger)
+    {
+        _context = context;
+        _logger = logger;
+    }
     // Permission mappings based on frontend PermissionContext
     private readonly Dictionary<string, List<string>> _rolePermissions = new()
     {
@@ -152,5 +163,72 @@ public class PermissionService : IPermissionService
             return new List<string>();
 
         return _routePermissions.ContainsKey(route) ? _routePermissions[route] : new List<string>();
+    }
+
+    // Async methods for API compatibility
+    public async Task<List<string>> GetUserPermissionsAsync(string userId, string role)
+    {
+        try
+        {
+                // Get permissions from database for the role
+                var rolePermissions = await _context.RolePermissions
+                    .Where(rp => rp.Role == role && rp.IsEnabled == true)
+                    .Select(rp => rp.PermissionKey)
+                    .ToListAsync();
+
+            // Also get user-specific permissions
+            var userPermissions = await _context.UserPermissions
+                .Where(up => up.UserId == int.Parse(userId) && up.IsEnabled == true)
+                .Select(up => up.PermissionKey)
+                .ToListAsync();
+
+            // Combine role and user permissions
+            var allPermissions = rolePermissions.Union(userPermissions).ToList();
+            
+            return allPermissions;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting user permissions for user {UserId}, role {Role}", userId, role);
+            return GetRolePermissions(role); // Fallback to hardcoded permissions
+        }
+    }
+
+    public async Task<bool> HasPermissionAsync(string userId, string role, string permission)
+    {
+        await Task.Delay(1); // Simulate async operation
+        return HasPermission(role, permission);
+    }
+
+    public async Task<List<string>> GetRolePermissionsAsync(string role)
+    {
+        try
+        {
+            // Get permissions from database for the role
+            var rolePermissions = await _context.RolePermissions
+                .Where(rp => rp.Role == role && rp.IsEnabled == true)
+                .Select(rp => rp.PermissionKey)
+                .ToListAsync();
+            
+            return rolePermissions;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting role permissions for role {Role}", role);
+            return GetRolePermissions(role); // Fallback to hardcoded permissions
+        }
+    }
+
+    public async Task<List<object>> GetAllRolesAsync()
+    {
+        await Task.Delay(1); // Simulate async operation
+        
+        return new List<object>
+        {
+            new { id = "admin", name = "Quản trị viên", description = "Có tất cả quyền trong hệ thống", color = "#ef4444" },
+            new { id = "warehouse", name = "Nhân viên kho", description = "Nhân viên làm việc tại kho", color = "#10b981" },
+            new { id = "team_leader", name = "Tổ trưởng", description = "Quản lý nhóm nhân viên", color = "#3b82f6" },
+            new { id = "sales", name = "Nhân viên kinh doanh", description = "Nhân viên phụ trách kinh doanh và bán hàng", color = "#8b5cf6" }
+        };
     }
 }

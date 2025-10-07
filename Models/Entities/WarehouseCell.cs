@@ -19,6 +19,8 @@ public class WarehouseCell
     public DateTime? ProductionDate { get; set; }
     public DateTime? ExpiryDate { get; set; }
     public string? Supplier { get; set; }
+    public decimal? UnitPrice { get; set; }
+    public int? ProductBatchId { get; set; }
     public DateTime? LastMoved { get; set; }
     public string Status { get; set; } = "Empty"; // Empty, Occupied, Full, Reserved
     public string? ClusterName { get; set; }

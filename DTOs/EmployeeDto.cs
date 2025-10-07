@@ -89,46 +89,19 @@ public class CreateEmployeeDto
 
 public class UpdateEmployeeDto
 {
-    [StringLength(20, ErrorMessage = "Mã nhân viên không được vượt quá 20 ký tự.")]
-    public string? EmployeeCode { get; set; }
-
-    [StringLength(50, ErrorMessage = "Tên không được vượt quá 50 ký tự.")]
-    public string? FirstName { get; set; }
-
-    [StringLength(50, ErrorMessage = "Họ không được vượt quá 50 ký tự.")]
-    public string? LastName { get; set; }
-
-    [EmailAddress(ErrorMessage = "Email không hợp lệ.")]
-    [StringLength(100, ErrorMessage = "Email không được vượt quá 100 ký tự.")]
-    public string? Email { get; set; }
-
-    [StringLength(20, ErrorMessage = "Số điện thoại không được vượt quá 20 ký tự.")]
-    public string? Phone { get; set; }
-
-    [StringLength(200, ErrorMessage = "Địa chỉ không được vượt quá 200 ký tự.")]
-    public string? Address { get; set; }
-
-    public DateTime? DateOfBirth { get; set; }
-    public string? Gender { get; set; }
-
-    [StringLength(100, ErrorMessage = "Chức vụ không được vượt quá 100 ký tự.")]
-    public string? Position { get; set; }
-
+    public string Username { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
+    public string Address { get; set; } = string.Empty;
+    public string Position { get; set; } = string.Empty;
     public int? DepartmentId { get; set; }
     public int? CompanyId { get; set; }
-    public DateTime? HireDate { get; set; }
-    public DateTime? TerminationDate { get; set; }
-    public string? EmploymentStatus { get; set; }
-
-    [Range(0, double.MaxValue, ErrorMessage = "Lương phải lớn hơn hoặc bằng 0.")]
-    public decimal? Salary { get; set; }
-
-    [StringLength(100, ErrorMessage = "Liên hệ khẩn cấp không được vượt quá 100 ký tự.")]
-    public string? EmergencyContact { get; set; }
-
-    [StringLength(20, ErrorMessage = "Số điện thoại khẩn cấp không được vượt quá 20 ký tự.")]
-    public string? EmergencyPhone { get; set; }
-
-    public string? Notes { get; set; }
-    public bool? IsActive { get; set; }
+    public int? Level { get; set; }
+    public string Role { get; set; } = string.Empty;
+    public bool IsActive { get; set; }
+    public bool? MustChangePassword { get; set; }
+    public bool? TwoFactorEnabled { get; set; }
+    public DateTime? LockedUntil { get; set; }
+    public DateTime? PasswordExpiresAt { get; set; }
 }

@@ -208,7 +208,6 @@ public class ImportOrdersController : ControllerBase
                     iod.Quantity,
                     iod.ReceivedQuantity,
                     iod.RemainingQuantity,
-                    iod.UnitPrice,
                     iod.TotalPrice,
                     iod.ProductionDate,
                     iod.ExpiryDate,
@@ -361,8 +360,7 @@ public class ImportOrdersController : ControllerBase
                         Quantity = detail.Quantity,
                         ReceivedQuantity = detail.ReceivedQuantity ?? detail.Quantity,
                         RemainingQuantity = detail.RemainingQuantity ?? detail.Quantity,
-                        UnitPrice = detail.UnitPrice,
-                        TotalPrice = detail.TotalPrice ?? (detail.UnitPrice * detail.Quantity),
+                        TotalPrice = detail.TotalPrice,
                         BatchNumber = detail.BatchNumber,
                         ProductionDate = detail.ProductionDate,
                         ExpiryDate = detail.ExpiryDate,
@@ -399,6 +397,7 @@ public class ImportOrdersController : ControllerBase
                         }
                         
                         // Update product information
+                        warehouseCell.ProductId = detail.ProductId;
                         warehouseCell.ProductName = product.ProductName;
                         warehouseCell.BatchNumber = detail.BatchNumber;
                         warehouseCell.ProductionDate = detail.ProductionDate;
@@ -422,7 +421,7 @@ public class ImportOrdersController : ControllerBase
                             // Update existing product in cell
                             existingCellProduct.Quantity += detail.Quantity;
                             existingCellProduct.RemainingQuantity += detail.Quantity;
-                            existingCellProduct.TotalPrice = existingCellProduct.Quantity * existingCellProduct.UnitPrice;
+                            // existingCellProduct.TotalPrice = existingCellProduct.TotalPrice;
                             
                             // Get ProductBatch info for updating missing fields
                             var productBatch = await _context.ProductBatches
@@ -498,8 +497,8 @@ public class ImportOrdersController : ControllerBase
                                 BatchNumber = detail.BatchNumber,
                                 Quantity = detail.Quantity,
                                 RemainingQuantity = detail.Quantity,
-                                UnitPrice = detail.UnitPrice ?? 0,
                                 TotalPrice = detail.TotalPrice ?? (detail.UnitPrice ?? 0) * detail.Quantity,
+                                UnitPrice = detail.UnitPrice ?? (detail.TotalPrice ?? 0) / (detail.Quantity > 0 ? detail.Quantity : 1),
                                 // Priority: detail -> ProductBatch -> product
                                 ProductionDate = detail.ProductionDate ?? product.ProductionDate,
                                 ExpiryDate = detail.ExpiryDate ?? product.ExpiryDate,
@@ -576,7 +575,7 @@ public class ImportOrdersController : ControllerBase
                             existingCellProduct.Quantity -= detail.Quantity;
                             existingCellProduct.RemainingQuantity -= detail.Quantity;
                             
-                            existingCellProduct.TotalPrice = existingCellProduct.Quantity * existingCellProduct.UnitPrice;
+                            // existingCellProduct.TotalPrice = existingCellProduct.TotalPrice;
                             existingCellProduct.UpdatedAt = DateTime.UtcNow;
                             existingCellProduct.UpdatedBy = "System";
 
@@ -649,8 +648,8 @@ public class ImportOrdersController : ControllerBase
                                 ProductName = productInfo.ProductName,
                                 Quantity = -detail.Quantity, // Negative quantity for export
                                 RemainingQuantity = 0,
-                                UnitPrice = detail.UnitPrice ?? 0,
-                                TotalPrice = (detail.UnitPrice ?? 0) * detail.Quantity,
+                                TotalPrice = detail.TotalPrice ?? (detail.UnitPrice ?? 0) * detail.Quantity,
+                                UnitPrice = detail.UnitPrice ?? (detail.TotalPrice ?? 0) / (detail.Quantity > 0 ? detail.Quantity : 1),
                                 BatchNumber = detail.BatchNumber,
                                 ProductionDate = detail.ProductionDate,
                                 ExpiryDate = detail.ExpiryDate,
@@ -730,7 +729,7 @@ public class ImportOrdersController : ControllerBase
                 }
 
                 // Calculate and update TotalValue from order details
-                var calculatedTotalValue = request.Details?.Sum(detail => detail.Quantity * detail.UnitPrice) ?? 0;
+                var calculatedTotalValue = request.Details?.Sum(detail => detail.TotalPrice ?? 0) ?? 0;
                 Console.WriteLine($"Calculating TotalValue - OrderId: {order.Id}, Details count: {request.Details?.Count ?? 0}, CalculatedTotalValue: {calculatedTotalValue}");
                 order.TotalValue = calculatedTotalValue;
 
@@ -1063,7 +1062,6 @@ public class ImportOrdersController : ControllerBase
                     ProductName = iod.Product != null ? iod.Product.ProductName : "Unknown",
                     Quantity = iod.Quantity,
                     RemainingQuantity = iod.RemainingQuantity,
-                    UnitPrice = iod.UnitPrice,
                     TotalPrice = iod.TotalPrice,
                     BatchNumber = iod.BatchNumber,
                     ProductionDate = iod.Product != null ? iod.Product.ProductionDate : null,
@@ -1191,8 +1189,8 @@ public class CreateImportOrderDetailRequest
     public int? ReceivedQuantity { get; set; }
     public int? RemainingQuantity { get; set; }
     
-    public decimal? UnitPrice { get; set; }
     public decimal? TotalPrice { get; set; }
+    public decimal? UnitPrice { get; set; }
     
     [MaxLength(100)]
     public string? BatchNumber { get; set; }

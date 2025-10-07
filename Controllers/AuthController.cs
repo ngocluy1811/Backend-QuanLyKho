@@ -5,6 +5,7 @@ using FertilizerWarehouseAPI.DTOs;
 using FertilizerWarehouseAPI.Data;
 using FertilizerWarehouseAPI.Models.Entities;
 using FertilizerWarehouseAPI.Models.Enums;
+using FertilizerWarehouseAPI.Models.DTOs;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
@@ -16,13 +17,15 @@ public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
     private readonly IJwtService _jwtService;
+    private readonly ISecurityService _securityService;
     private readonly ILogger<AuthController> _logger;
     private readonly ApplicationDbContext _context;
 
-    public AuthController(IAuthService authService, IJwtService jwtService, ILogger<AuthController> logger, ApplicationDbContext context)
+    public AuthController(IAuthService authService, IJwtService jwtService, ISecurityService securityService, ILogger<AuthController> logger, ApplicationDbContext context)
     {
         _authService = authService;
         _jwtService = jwtService;
+        _securityService = securityService;
         _logger = logger;
         _context = context;
     }
@@ -41,6 +44,9 @@ public class AuthController : ControllerBase
 
         try
         {
+            var ipAddress = GetClientIpAddress();
+            var userAgent = Request.Headers["User-Agent"].ToString();
+
             var user = await _context.Users
                 .Include(u => u.Company)
                 .Include(u => u.Department)
@@ -48,6 +54,15 @@ public class AuthController : ControllerBase
 
             if (user == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.PasswordHash))
             {
+                // Log failed login attempt
+                // Temporarily disabled due to missing LoginHistories table
+                /*
+                if (user != null)
+                {
+                    await _securityService.LogFailedLoginAsync(user.Id, ipAddress, userAgent, "Invalid password");
+                }
+                */
+
                 return Unauthorized(new AuthResponseDto
                 {
                     Success = false,
@@ -55,11 +70,42 @@ public class AuthController : ControllerBase
                 });
             }
 
+            // Check if account is locked
+            if (user.LockedUntil.HasValue && user.LockedUntil > DateTime.UtcNow)
+            {
+                // Temporarily disabled due to missing LoginHistories table
+                // await _securityService.LogFailedLoginAsync(user.Id, ipAddress, userAgent, "Account locked");
+                return Unauthorized(new AuthResponseDto
+                {
+                    Success = false,
+                    Message = $"Account is locked until {user.LockedUntil:yyyy-MM-dd HH:mm:ss} UTC"
+                });
+            }
+
+            // Check if account should be locked due to suspicious activity
+            // Temporarily disabled due to missing LoginHistories table
+            /*
+            if (await _securityService.ShouldLockAccountAsync(user.Id))
+            {
+                await _securityService.LockAccountAsync(user.Id, "Multiple failed login attempts", 30);
+                return Unauthorized(new AuthResponseDto
+                {
+                    Success = false,
+                    Message = "Account temporarily locked due to suspicious activity"
+                });
+            }
+            */
+
             var token = _jwtService.GenerateToken(user);
             var refreshToken = _jwtService.GenerateRefreshToken();
 
+            // Log successful login with security monitoring
+            // Temporarily disabled due to missing LoginHistories table
+            // var loginHistory = await _securityService.LogLoginAsync(user.Id, ipAddress, userAgent, true);
+
             // Update last login
             user.LastLogin = DateTime.UtcNow;
+            user.LastLoginAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
             var result = new AuthResponseDto
@@ -145,36 +191,16 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = "Logout failed" });
         }
 
+        // Log logout with security monitoring
+        var sessionId = GetSessionIdFromToken(token);
+        if (!string.IsNullOrEmpty(sessionId))
+        {
+            await _securityService.LogLogoutAsync(userId.Value, sessionId);
+        }
+
         return Ok(new { message = "Logout successful" });
     }
 
-    /// <summary>
-    /// Change password for current user
-    /// </summary>
-    [HttpPost("change-password")]
-    [Authorize]
-    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto changePasswordDto)
-    {
-        if (!ModelState.IsValid)
-        {
-            return BadRequest(ModelState);
-        }
-
-        var userId = GetCurrentUserId();
-        if (userId == null)
-        {
-            return Unauthorized();
-        }
-
-        var result = await _authService.ChangePasswordAsync(userId.Value, changePasswordDto);
-
-        if (!result)
-        {
-            return BadRequest(new { message = "Failed to change password. Please check your current password." });
-        }
-
-        return Ok(new { message = "Password changed successfully" });
-    }
 
     /// <summary>
     /// Request password reset via email
@@ -217,56 +243,208 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Reset user password by admin
+    /// </summary>
+    [HttpPost("reset-user-password")]
+    [Authorize]
+    public async Task<IActionResult> ResetUserPassword([FromBody] ResetUserPasswordRequest request)
+    {
+        try
+        {
+            var user = await _context.Users.FindAsync(request.UserId);
+            if (user == null)
+            {
+                return NotFound(new { success = false, message = "Không tìm thấy người dùng" });
+            }
+
+            // Hash the new password
+            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+            user.PasswordHash = hashedPassword;
+            user.UpdatedAt = DateTime.UtcNow;
+            user.MustChangePassword = true; // Force user to change password on next login
+
+            _context.Users.Update(user);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Password reset for user {Username} by admin", user.Username);
+
+            return Ok(new
+            {
+                success = true,
+                message = "Mật khẩu đã được cập nhật thành công"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resetting password for user {UserId}", request.UserId);
+            return StatusCode(500, new { success = false, message = "Có lỗi xảy ra khi cập nhật mật khẩu" });
+        }
+    }
+
+    /// <summary>
+    /// Change user password
+    /// </summary>
+    [HttpPost("change-password")]
+    [Authorize]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto changePasswordDto)
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+            {
+                return Unauthorized(new { success = false, message = "Không xác định được người dùng" });
+            }
+
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+            {
+                return NotFound(new { success = false, message = "Không tìm thấy người dùng" });
+            }
+
+            // Verify current password
+            if (!BCrypt.Net.BCrypt.Verify(changePasswordDto.CurrentPassword, user.PasswordHash))
+            {
+                return BadRequest(new { success = false, message = "Mật khẩu hiện tại không đúng" });
+            }
+
+            // Hash new password
+            var hashedNewPassword = BCrypt.Net.BCrypt.HashPassword(changePasswordDto.NewPassword);
+            user.PasswordHash = hashedNewPassword;
+            user.MustChangePassword = false; // User has changed password
+            user.UpdatedAt = DateTime.UtcNow;
+
+            _context.Users.Update(user);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Password changed for user {Username}", user.Username);
+
+            return Ok(new
+            {
+                success = true,
+                message = "Mật khẩu đã được thay đổi thành công"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error changing password for user");
+            return StatusCode(500, new { success = false, message = "Có lỗi xảy ra khi thay đổi mật khẩu" });
+        }
+    }
+
+    /// <summary>
+    /// Update user profile
+    /// </summary>
+    [HttpPut("profile")]
+    [Authorize]
+    public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto updateProfileDto)
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+            {
+                return Unauthorized(new { success = false, message = "Không xác định được người dùng" });
+            }
+
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+            {
+                return NotFound(new { success = false, message = "Không tìm thấy người dùng" });
+            }
+
+            // Update user information
+            if (!string.IsNullOrEmpty(updateProfileDto.FullName))
+                user.FullName = updateProfileDto.FullName;
+            
+            if (!string.IsNullOrEmpty(updateProfileDto.Email))
+                user.Email = updateProfileDto.Email;
+            
+            if (!string.IsNullOrEmpty(updateProfileDto.Phone))
+                user.Phone = updateProfileDto.Phone;
+
+            user.UpdatedAt = DateTime.UtcNow;
+
+            _context.Users.Update(user);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Profile updated for user {Username}", user.Username);
+
+            return Ok(new
+            {
+                success = true,
+                message = "Thông tin cá nhân đã được cập nhật thành công",
+                user = new
+                {
+                    id = user.Id,
+                    username = user.Username,
+                    fullName = user.FullName,
+                    email = user.Email,
+                    phone = user.Phone,
+                    role = user.Role.ToString()
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating profile for user");
+            return StatusCode(500, new { success = false, message = "Có lỗi xảy ra khi cập nhật thông tin" });
+        }
+    }
+
+    /// <summary>
     /// Get current user profile
     /// </summary>
     [HttpGet("profile")]
     [Authorize]
     public async Task<IActionResult> GetProfile()
     {
-        var userId = GetCurrentUserId();
-        if (userId == null)
-        {
-            return Unauthorized();
-        }
-
         try
         {
-            var userProfile = await _authService.GetUserProfileAsync(userId.Value);
-            return Ok(userProfile);
+            var userId = GetCurrentUserId();
+            if (userId == null)
+            {
+                return Unauthorized(new { success = false, message = "Không xác định được người dùng" });
+            }
+
+            var user = await _context.Users
+                .Include(u => u.Company)
+                .Include(u => u.Department)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null)
+            {
+                return NotFound(new { success = false, message = "Không tìm thấy người dùng" });
+            }
+
+            var profile = new
+            {
+                success = true,
+                data = new
+                {
+                    id = user.Id,
+                    username = user.Username,
+                    fullName = user.FullName,
+                    email = user.Email,
+                    phone = user.Phone,
+                    role = user.Role.ToString(),
+                    companyName = user.Company?.CompanyName ?? "",
+                    departmentName = user.Department?.Name ?? "",
+                    isActive = user.IsActive,
+                    createdAt = user.CreatedAt,
+                    lastLogin = user.LastLogin
+                }
+            };
+
+            return Ok(profile);
         }
-        catch (InvalidOperationException)
+        catch (Exception ex)
         {
-            return NotFound(new { message = "User not found" });
+            _logger.LogError(ex, "Error getting user profile");
+            return StatusCode(500, new { success = false, message = "Có lỗi xảy ra khi lấy thông tin cá nhân" });
         }
     }
 
-    /// <summary>
-    /// Update current user profile
-    /// </summary>
-    [HttpPut("profile")]
-    [Authorize]
-    public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto updateProfileDto)
-    {
-        if (!ModelState.IsValid)
-        {
-            return BadRequest(ModelState);
-        }
-
-        var userId = GetCurrentUserId();
-        if (userId == null)
-        {
-            return Unauthorized();
-        }
-
-        var result = await _authService.UpdateProfileAsync(userId.Value, updateProfileDto);
-
-        if (!result)
-        {
-            return BadRequest(new { message = "Failed to update profile" });
-        }
-
-        return Ok(new { message = "Profile updated successfully" });
-    }
 
     private string? GetTokenFromHeader()
     {
@@ -783,6 +961,22 @@ public class AuthController : ControllerBase
             Models.Enums.UserRole.Sales => "sales",
             _ => "unknown"
         };
+    }
+
+
+
+    private string? GetSessionIdFromToken(string token)
+    {
+        try
+        {
+            var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+            var jsonToken = handler.ReadJwtToken(token);
+            return jsonToken.Claims.FirstOrDefault(x => x.Type == "sessionId")?.Value;
+        }
+        catch
+        {
+            return null;
+        }
     }
 }
 

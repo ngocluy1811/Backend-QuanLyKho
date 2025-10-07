@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using FertilizerWarehouseAPI.Models.Entities;
 using FertilizerWarehouseAPI.Models.Enums;
+using FertilizerWarehouseAPI.Models;
 
 namespace FertilizerWarehouseAPI.Data;
 
@@ -19,7 +20,15 @@ public class ApplicationDbContext : DbContext
     public DbSet<Models.Entities.UserRole> UserRoles { get; set; }
     public DbSet<RolePermission> RolePermissions { get; set; }
     public DbSet<UserPermission> UserPermissions { get; set; }
-    public DbSet<UserSession> UserSessions { get; set; }
+        public DbSet<UserSession> UserSessions { get; set; }
+        public DbSet<PasswordResetRequest> PasswordResetRequests { get; set; }
+        public DbSet<LoginHistory> LoginHistories { get; set; }
+        public DbSet<SecurityAlert> SecurityAlerts { get; set; }
+        public DbSet<TrustedDevice> TrustedDevices { get; set; }
+        
+        // Attendance & Leave Management
+        public DbSet<AttendanceRecord> AttendanceRecords { get; set; }
+        public DbSet<LeaveRequestModel> LeaveRequests { get; set; }
 
     // Warehouse & Positions
     public DbSet<Warehouse> Warehouses { get; set; }
@@ -30,6 +39,12 @@ public class ApplicationDbContext : DbContext
     public DbSet<WarehouseCluster> WarehouseClusters { get; set; }
     public DbSet<WarehouseActivity> WarehouseActivities { get; set; }
     public DbSet<UserWarehouse> UserWarehouses { get; set; }
+
+    // Maintenance & Inventory
+    public DbSet<MaintenanceRequest> MaintenanceRequests { get; set; }
+    public DbSet<MaintenanceHistory> MaintenanceHistories { get; set; }
+    public DbSet<InventoryCheck> InventoryChecks { get; set; }
+    public DbSet<InventoryCheckItem> InventoryCheckItems { get; set; }
 
     // Products
     public DbSet<Product> Products { get; set; }
@@ -93,7 +108,6 @@ public class ApplicationDbContext : DbContext
     // Employee Management
     public DbSet<Employee> Employees { get; set; }
     public DbSet<Attendance> Attendances { get; set; }
-    public DbSet<LeaveRequest> LeaveRequests { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -148,32 +162,16 @@ public class ApplicationDbContext : DbContext
         // RolePermission configurations
         modelBuilder.Entity<RolePermission>(entity =>
         {
-            entity.HasIndex(e => new { e.RoleId, e.PermissionId }).IsUnique();
-            entity.HasOne(rp => rp.Role)
-                .WithMany(r => r.RolePermissions)
-                .HasForeignKey(rp => rp.RoleId)
-                .OnDelete(DeleteBehavior.Cascade);
-            entity.HasOne(rp => rp.Permission)
-                .WithMany()
-                .HasForeignKey(rp => rp.PermissionId)
-                .OnDelete(DeleteBehavior.Cascade);
-            entity.HasOne(rp => rp.GrantedByUser)
-                .WithMany()
-                .HasForeignKey(rp => rp.GrantedBy)
-                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasIndex(e => new { e.Role, e.PermissionKey }).IsUnique();
         });
 
         // UserPermission configurations
         modelBuilder.Entity<UserPermission>(entity =>
         {
-            entity.HasIndex(e => new { e.UserId, e.PermissionId }).IsUnique();
+            entity.HasIndex(e => new { e.UserId, e.PermissionKey }).IsUnique();
             entity.HasOne(up => up.User)
                 .WithMany()
                 .HasForeignKey(up => up.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
-            entity.HasOne(up => up.Permission)
-                .WithMany(p => p.UserPermissions)
-                .HasForeignKey(up => up.PermissionId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

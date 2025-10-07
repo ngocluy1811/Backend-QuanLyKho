@@ -120,6 +120,9 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IWarehouseService, WarehouseService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<ISecurityService, SecurityService>();
+builder.Services.AddHttpClient<ISecurityService, SecurityService>();
 
 // Add AutoMapper
 builder.Services.AddAutoMapper(typeof(Program));
@@ -233,6 +236,14 @@ if (app.Environment.IsDevelopment())
         // Tạo database và chạy migrations
         context.Database.Migrate();
         Log.Information("Database migration completed successfully");
+        
+        // Seed permissions data
+        await SeedData.SeedPermissionsAsync(context);
+        Log.Information("Permissions data seeded successfully");
+        
+        // Seed sample data
+        await SeedData.SeedSampleDataAsync(context);
+        Log.Information("Sample data seeded successfully");
     }
     catch (Exception ex)
     {

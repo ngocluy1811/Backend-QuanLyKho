@@ -632,6 +632,7 @@ namespace FertilizerWarehouseAPI.Controllers
                 // Update cell
                 var oldAmount = cell.CurrentAmount;
                 cell.CurrentAmount += request.Amount;
+                cell.ProductId = request.ProductId ?? cell.ProductId;
                 cell.ProductName = request.ProductName ?? cell.ProductName;
                 cell.BatchNumber = request.BatchNumber ?? cell.BatchNumber;
                 
@@ -648,6 +649,37 @@ namespace FertilizerWarehouseAPI.Controllers
                 {
                     cell.Supplier = request.Supplier;
                 }
+                
+                // Update unit price if provided
+                if (request.UnitPrice.HasValue && request.UnitPrice.Value > 0)
+                {
+                    cell.UnitPrice = request.UnitPrice.Value;
+                }
+                
+                // Update production date if provided
+                if (!string.IsNullOrEmpty(request.ProductionDate))
+                {
+                    if (DateTime.TryParse(request.ProductionDate, out DateTime prodDate))
+                    {
+                        cell.ProductionDate = prodDate;
+                    }
+                }
+                
+                // Update expiry date if provided
+                if (!string.IsNullOrEmpty(request.ExpiryDate))
+                {
+                    if (DateTime.TryParse(request.ExpiryDate, out DateTime expDate))
+                    {
+                        cell.ExpiryDate = expDate;
+                    }
+                }
+                
+                // Update product batch ID if provided
+                if (request.ProductBatchId.HasValue && request.ProductBatchId.Value > 0)
+                {
+                    cell.ProductBatchId = request.ProductBatchId.Value;
+                }
+                
                 
                 cell.Status = cell.CurrentAmount > 0 ? "Occupied" : "Empty";
                 cell.LastMoved = DateTime.UtcNow;
@@ -1242,11 +1274,14 @@ namespace FertilizerWarehouseAPI.Controllers
     public class ImportGoodsRequest
     {
         public int Amount { get; set; }
+        public int? ProductId { get; set; }
         public string ProductName { get; set; } = string.Empty;
         public string? BatchNumber { get; set; }
         public string? ProductionDate { get; set; }
         public string? ExpiryDate { get; set; }
         public string? Supplier { get; set; }
+        public decimal? UnitPrice { get; set; }
+        public int? ProductBatchId { get; set; }
         public string? UserName { get; set; }
         public string? Notes { get; set; }
     }
