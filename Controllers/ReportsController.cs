@@ -254,8 +254,8 @@ namespace FertilizerWarehouseAPI.Controllers
                 // Nhóm theo tuần
                 var weeklyData = importExportOrders
                     .GroupBy(iod => new { Week = iod.ImportOrder.OrderDate.Day / 7 + 1 })
-                    .Select(g => new
-                    {
+                        .Select(g => new
+                        {
                         week = $"Tuần {g.Key.Week}",
                         import = g.Where(iod => iod.ImportOrder.OrderType == "Import").Sum(iod => iod.Quantity),
                         export = g.Where(iod => iod.ImportOrder.OrderType == "Export").Sum(iod => iod.Quantity)
@@ -377,8 +377,8 @@ namespace FertilizerWarehouseAPI.Controllers
                 var weeklyData = await _context.SalesOrderDetails
                     .Where(sod => sod.SalesOrder.OrderDate >= startOfMonth)
                     .GroupBy(sod => new { Week = sod.SalesOrder.OrderDate.Day / 7 + 1 })
-                    .Select(g => new
-                    {
+                        .Select(g => new
+                        {
                         week = $"Tuần {g.Key.Week}",
                         revenue = g.Sum(sod => sod.Quantity * sod.UnitPrice),
                         orders = g.Count()
@@ -528,7 +528,7 @@ namespace FertilizerWarehouseAPI.Controllers
                     })
                     .OrderByDescending(x => x.date)
                     .Take(50)
-                    .ToListAsync();
+                .ToListAsync();
 
                 return Ok(attendanceDetails);
             }
@@ -595,7 +595,7 @@ namespace FertilizerWarehouseAPI.Controllers
                         averageHoursPerDay = g.Count() > 0 ? g.Count() * 8.0 / g.Count() : 0
                     })
                     .OrderBy(x => x.week)
-                    .ToListAsync();
+                .ToListAsync();
 
                 return Ok(weeklyData);
             }
@@ -629,7 +629,7 @@ namespace FertilizerWarehouseAPI.Controllers
                     })
                     .OrderByDescending(x => x.date)
                     .Take(50)
-                    .ToListAsync();
+                .ToListAsync();
 
                 return Ok(timesheetDetails);
             }
@@ -700,7 +700,7 @@ namespace FertilizerWarehouseAPI.Controllers
                     })
                     .OrderBy(x => x.currentStock)
                     .Take(50)
-                    .ToListAsync();
+                .ToListAsync();
 
                 return Ok(inventoryDetails);
             }
