@@ -31,7 +31,7 @@ namespace FertilizerWarehouseAPI.Controllers
                     .ThenInclude(u => u.Department)
                     .Include(lr => lr.ApprovedByUser)
                     .Select(lr => new
-                    {   
+                    {
                         Id = lr.Id,
                         UserId = lr.UserId,
                         EmployeeId = lr.User.Username,
