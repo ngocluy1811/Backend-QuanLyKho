@@ -14,11 +14,46 @@ namespace FertilizerWarehouseAPI.Data
                 return;
             }
 
-            // Create sample users
+            // Get the default company (should exist from ApplicationDbContext seed data)
+            var company = await context.Companies.FirstOrDefaultAsync();
+            if (company == null)
+            {
+                // Try to create company with conflict handling
+                try
+                {
+                    company = new Company
+                    {
+                        Id = 1, // Use same ID as in ApplicationDbContext
+                        Code = "FWC",
+                        CompanyName = "Fertilizer Warehouse Company",
+                        Address = "123 Main Street",
+                        Phone = "0123456789",
+                        Email = "admin@fwc.com",
+                        TaxCode = "123456789",
+                        Status = "Active",
+                        CreatedAt = DateTime.UtcNow,
+                        IsActive = true
+                    };
+                    context.Companies.Add(company);
+                    await context.SaveChangesAsync();
+                }
+                catch (Exception)
+                {
+                    // If company already exists, get it from database
+                    company = await context.Companies.FirstOrDefaultAsync();
+                    if (company == null)
+                    {
+                        throw new InvalidOperationException("Failed to create or find default company");
+                    }
+                }
+            }
+
+            // Create sample users with CompanyId
             var users = new List<User>
             {
                 new User
                 {
+                    CompanyId = company.Id,
                     Username = "admin",
                     FullName = "Quản trị viên",
                     Email = "admin@company.com",
@@ -31,6 +66,7 @@ namespace FertilizerWarehouseAPI.Data
                 },
                 new User
                 {
+                    CompanyId = company.Id,
                     Username = "nv001",
                     FullName = "Nguyễn Văn A",
                     Email = "nva@company.com",
@@ -43,6 +79,7 @@ namespace FertilizerWarehouseAPI.Data
                 },
                 new User
                 {
+                    CompanyId = company.Id,
                     Username = "nv002",
                     FullName = "Trần Thị B",
                     Email = "ttb@company.com",
