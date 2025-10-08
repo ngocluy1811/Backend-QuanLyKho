@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "TBW4ql19Li4=",
+  "dgSpecHash": "rHKWkLGYwqM=",
   "success": true,
   "projectFilePath": "C:\\Users\\TRANG\\Desktop\\FILE LÀM VIỆC CÔNG TY\\UNG DUNG QUAN LY KHO\\BACKEND_QUANLYKHO\\FertilizerWarehouseAPI\\FertilizerWarehouseAPI.csproj",
   "expectedPackageFiles": [
@@ -71,6 +71,8 @@
     "C:\\Users\\TRANG\\.nuget\\packages\\microsoft.win32.systemevents\\6.0.0\\microsoft.win32.systemevents.6.0.0.nupkg.sha512",
     "C:\\Users\\TRANG\\.nuget\\packages\\mimekit\\4.3.0\\mimekit.4.3.0.nupkg.sha512",
     "C:\\Users\\TRANG\\.nuget\\packages\\mono.texttemplating\\2.2.1\\mono.texttemplating.2.2.1.nupkg.sha512",
+    "C:\\Users\\TRANG\\.nuget\\packages\\npgsql\\8.0.0\\npgsql.8.0.0.nupkg.sha512",
+    "C:\\Users\\TRANG\\.nuget\\packages\\npgsql.entityframeworkcore.postgresql\\8.0.0\\npgsql.entityframeworkcore.postgresql.8.0.0.nupkg.sha512",
     "C:\\Users\\TRANG\\.nuget\\packages\\qrcoder\\1.4.3\\qrcoder.1.4.3.nupkg.sha512",
     "C:\\Users\\TRANG\\.nuget\\packages\\serilog\\3.1.1\\serilog.3.1.1.nupkg.sha512",
     "C:\\Users\\TRANG\\.nuget\\packages\\serilog.aspnetcore\\8.0.0\\serilog.aspnetcore.8.0.0.nupkg.sha512",

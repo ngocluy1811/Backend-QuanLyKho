@@ -186,3 +186,6 @@ C:\Users\TRANG\Desktop\FILE LÀM VIỆC CÔNG TY\UNG DUNG QUAN LY KHO\BACKEND_QU
 C:\Users\TRANG\Desktop\FILE LÀM VIỆC CÔNG TY\UNG DUNG QUAN LY KHO\BACKEND_QUANLYKHO\FertilizerWarehouseAPI\obj\Debug\net8.0\FertilizerWarehouseAPI.genruntimeconfig.cache
 C:\Users\TRANG\Desktop\FILE LÀM VIỆC CÔNG TY\UNG DUNG QUAN LY KHO\BACKEND_QUANLYKHO\FertilizerWarehouseAPI\obj\Debug\net8.0\ref\FertilizerWarehouseAPI.dll
 C:\Users\TRANG\Desktop\FILE LÀM VIỆC CÔNG TY\UNG DUNG QUAN LY KHO\BACKEND_QUANLYKHO\FertilizerWarehouseAPI\obj\Debug\net8.0\FertilizerWarehouseAPI.sourcelink.json
+C:\Users\TRANG\Desktop\FILE LÀM VIỆC CÔNG TY\UNG DUNG QUAN LY KHO\BACKEND_QUANLYKHO\FertilizerWarehouseAPI\bin\Debug\net8.0\appsettings.Production.json
+C:\Users\TRANG\Desktop\FILE LÀM VIỆC CÔNG TY\UNG DUNG QUAN LY KHO\BACKEND_QUANLYKHO\FertilizerWarehouseAPI\bin\Debug\net8.0\Npgsql.dll
+C:\Users\TRANG\Desktop\FILE LÀM VIỆC CÔNG TY\UNG DUNG QUAN LY KHO\BACKEND_QUANLYKHO\FertilizerWarehouseAPI\bin\Debug\net8.0\Npgsql.EntityFrameworkCore.PostgreSQL.dll

@@ -24,7 +24,7 @@ builder.Host.UseSerilog();
 // Add services to the container
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseNpgsql(connectionString));
 
 // JWT Configuration
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -230,10 +230,9 @@ app.MapGet("/", () => new {
     Timestamp = DateTime.UtcNow 
 });
 
-// Auto-migrate database
-if (app.Environment.IsDevelopment())
+// Auto-migrate database (chạy trong cả Development và Production)
+using (var scope = app.Services.CreateScope())
 {
-    using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     
     try

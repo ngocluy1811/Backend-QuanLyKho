@@ -175,3 +175,7 @@
 2025-10-07 14:17:29.801 +07:00 [INF] Sample data seeded successfully
 2025-10-07 14:17:29.808 +07:00 [INF] Starting Fertilizer Warehouse API
 2025-10-07 14:17:33.825 +07:00 [WRN] Failed to determine the https port for redirect.
+2025-10-07 22:20:43.476 +07:00 [INF] Database migration completed successfully
+2025-10-07 22:20:43.665 +07:00 [INF] Permissions data seeded successfully
+2025-10-07 22:20:43.724 +07:00 [INF] Sample data seeded successfully
+2025-10-07 22:20:43.728 +07:00 [INF] Starting Fertilizer Warehouse API
