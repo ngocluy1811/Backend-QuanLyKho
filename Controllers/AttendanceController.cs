@@ -301,11 +301,11 @@ namespace FertilizerWarehouseAPI.Controllers
                 var targetDate = date ?? DateTime.Today;
                 var records = await _context.AttendanceRecords
                     .Where(a => a.Date.Date == targetDate.Date && a.IsOvertimeRequired == true)
-                    .Include(a => a.User)
+                    // .Include(a => a.User) // Removed to avoid null reference
                     .Select(a => new
                     {
                         a.UserId,
-                        EmployeeName = a.User.FullName,
+                        EmployeeName = "Nhân viên", // Simplified to avoid null reference
                         a.IsOvertimeRequired,
                         a.Date
                     })

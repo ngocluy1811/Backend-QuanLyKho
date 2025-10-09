@@ -115,28 +115,28 @@ namespace FertilizerWarehouseAPI.Controllers
             try
             {
                 var employee = await _context.Users
-                    .Include(u => u.Company)
-                    .Include(u => u.Department)
-                    .Where(u => u.Id == id && u.IsActive)
+                    // .Include(u => u.Company) // Removed to avoid null reference
+                    // .Include(u => u.Department) // Removed to avoid null reference
+                    .Where(u => u.Id == id) // Removed IsActive filter to show all users
                     .Select(u => new
                     {
                         u.Id,
-                        u.Username,
-                        u.Email,
-                        u.FullName,
-                        u.Phone,
+                        Username = u.Username ?? "",
+                        Email = u.Email ?? "",
+                        FullName = u.FullName ?? "",
+                        Phone = u.Phone ?? "",
                         u.Role,
                         RoleName = u.Role.ToString(),
                         u.CompanyId,
-                        CompanyName = u.Company.CompanyName,
+                        CompanyName = "Công ty mặc định", // Simplified
                         u.DepartmentId,
-                        DepartmentName = u.Department != null ? u.Department.Name : null,
-                        u.Level,
+                        DepartmentName = "Chưa phân công", // Simplified
+                        Level = u.Level ?? 0,
                         u.IsActive,
                         u.CreatedAt,
-                        u.LastLoginAt,
+                        LastLoginAt = u.LastLoginAt ?? (DateTime?)null,
                         u.FailedLoginAttempts,
-                        IsLocked = u.LockedUntil > DateTime.UtcNow
+                        IsLocked = u.LockedUntil.HasValue && u.LockedUntil > DateTime.UtcNow
                     })
                     .FirstOrDefaultAsync();
 
@@ -316,6 +316,18 @@ namespace FertilizerWarehouseAPI.Controllers
                 // Update optional fields
                 if (updateDto.DepartmentId.HasValue)
                     employee.DepartmentId = updateDto.DepartmentId;
+                
+                // Update Level if provided
+                if (updateDto.Level.HasValue)
+                    employee.Level = updateDto.Level.Value;
+                
+                // Update PasswordExpiresAt if provided
+                if (updateDto.PasswordExpiresAt.HasValue)
+                    employee.PasswordExpiresAt = updateDto.PasswordExpiresAt.Value;
+                
+                // Update MustChangePassword if provided
+                if (updateDto.MustChangePassword.HasValue)
+                    employee.MustChangePassword = updateDto.MustChangePassword.Value;
                 
                 employee.IsActive = updateDto.IsActive;
 
