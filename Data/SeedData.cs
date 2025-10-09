@@ -253,48 +253,57 @@ namespace FertilizerWarehouseAPI.Data
                 return;
             }
 
-            var users = await context.Users.OrderBy(u => u.Id).Take(3).ToListAsync();
+            // Check if Users table has data
+            var userCount = await context.Users.CountAsync();
+            Console.WriteLine($"Total users in database: {userCount}");
+            
+            var users = await context.Users.OrderBy(u => u.Id).Take(2).ToListAsync(); // Reduce to 2 users
             if (!users.Any())
             {
+                Console.WriteLine("No users found for attendance seeding");
                 return;
             }
+            
+            Console.WriteLine($"Found {users.Count} users for attendance seeding");
 
-            var attendanceRecords = new List<AttendanceRecord>();
+            Console.WriteLine($"Seeding attendance data for {users.Count} users");
+
             var today = DateTime.Today;
 
-            for (int i = 0; i < 7; i++)
+            // Create only 3 days of data instead of 7
+            for (int i = 0; i < 3; i++)
             {
                 var date = today.AddDays(-i);
                 foreach (var user in users)
                 {
-                    var record = new AttendanceRecord
+                    try
                     {
-                        UserId = user.Id,
-                        Date = date,
-                        CheckInTime = date.AddHours(8), // 8:00 AM
-                        CheckOutTime = date.AddHours(17), // 5:00 PM
-                        OvertimeHours = i % 2 == 0 ? 2.0m : 0.0m, // Use decimal literal
-                        OvertimeStartTime = i % 2 == 0 ? date.AddHours(17) : (DateTime?)null,
-                        OvertimeEndTime = i % 2 == 0 ? date.AddHours(19) : (DateTime?)null,
-                        IsOvertimeRequired = i % 2 == 0,
-                        Status = "present",
-                        Notes = $"Attendance record for {user.FullName}",
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    };
-                    attendanceRecords.Add(record);
+                        var record = new AttendanceRecord
+                        {
+                            UserId = user.Id,
+                            Date = date,
+                            CheckInTime = date.AddHours(8), // 8:00 AM
+                            CheckOutTime = date.AddHours(17), // 5:00 PM
+                            OvertimeHours = i % 2 == 0 ? 2.0m : 0.0m,
+                            OvertimeStartTime = i % 2 == 0 ? date.AddHours(17) : (DateTime?)null,
+                            OvertimeEndTime = i % 2 == 0 ? date.AddHours(19) : (DateTime?)null,
+                            IsOvertimeRequired = i % 2 == 0,
+                            Status = "present",
+                            Notes = $"Attendance for {user.Username}",
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        };
+                        
+                        context.AttendanceRecords.Add(record);
+                        await context.SaveChangesAsync(); // Save one by one
+                        Console.WriteLine($"Created attendance record for user {user.Username} on {date:yyyy-MM-dd}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error creating attendance record for user {user.Username}: {ex.Message}");
+                        // Continue with next record
+                    }
                 }
-            }
-
-            try
-            {
-                context.AttendanceRecords.AddRange(attendanceRecords);
-                await context.SaveChangesAsync();
-            }
-            catch (Exception ex)
-            {
-                // Log error but don't fail the entire seeding process
-                Console.WriteLine($"Error seeding attendance data: {ex.Message}");
             }
         }
     }
