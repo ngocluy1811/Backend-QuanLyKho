@@ -6,6 +6,16 @@ using FertilizerWarehouseAPI.Models.DTOs;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 
+public class CheckInRequest
+{
+    public int UserId { get; set; }
+}
+
+public class CheckOutRequest
+{
+    public int UserId { get; set; }
+}
+
 namespace FertilizerWarehouseAPI.Controllers
 {
     [ApiController]
@@ -29,6 +39,13 @@ namespace FertilizerWarehouseAPI.Controllers
                 // Check if AttendanceRecords table exists and has data
                 var totalRecords = await _context.AttendanceRecords.CountAsync();
                 Console.WriteLine($"Total attendance records: {totalRecords}");
+
+                // If no records exist, return empty array
+                if (totalRecords == 0)
+                {
+                    Console.WriteLine("No attendance records found, returning empty array");
+                    return Ok(new { success = true, data = new object[0], total = 0, message = "No attendance records found" });
+                }
 
                 var query = _context.AttendanceRecords.AsQueryable();
                 
@@ -305,6 +322,97 @@ namespace FertilizerWarehouseAPI.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { success = false, message = "Lỗi khi cập nhật trạng thái tăng ca", error = ex.Message });
+            }
+        }
+
+        // POST: api/attendance/checkin
+        [HttpPost("checkin")]
+        [AllowAnonymous]
+        public async Task<IActionResult> CheckIn([FromBody] CheckInRequest request)
+        {
+            try
+            {
+                if (request == null)
+                {
+                    return BadRequest(new { success = false, message = "Request body cannot be null" });
+                }
+
+                Console.WriteLine($"Check-in request for UserId: {request.UserId}");
+                
+                var today = DateTime.UtcNow.Date;
+                var existingRecord = await _context.AttendanceRecords
+                    .FirstOrDefaultAsync(a => a.UserId == request.UserId && a.Date.Date == today);
+
+                if (existingRecord == null)
+                {
+                    // Create new record
+                    var newRecord = new AttendanceRecord
+                    {
+                        UserId = request.UserId,
+                        Date = today,
+                        CheckInTime = DateTime.UtcNow,
+                        Status = "present",
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    _context.AttendanceRecords.Add(newRecord);
+                    Console.WriteLine($"Created new attendance record for UserId: {request.UserId}");
+                }
+                else
+                {
+                    // Update existing record
+                    existingRecord.CheckInTime = DateTime.UtcNow;
+                    existingRecord.UpdatedAt = DateTime.UtcNow;
+                    Console.WriteLine($"Updated check-in time for UserId: {request.UserId}");
+                }
+
+                await _context.SaveChangesAsync();
+                Console.WriteLine("Successfully saved check-in record");
+
+                return Ok(new { success = true, message = "Chấm công vào thành công" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "Lỗi khi chấm công vào", error = ex.Message });
+            }
+        }
+
+        // POST: api/attendance/checkout
+        [HttpPost("checkout")]
+        [AllowAnonymous]
+        public async Task<IActionResult> CheckOut([FromBody] CheckOutRequest request)
+        {
+            try
+            {
+                if (request == null)
+                {
+                    return BadRequest(new { success = false, message = "Request body cannot be null" });
+                }
+
+                Console.WriteLine($"Check-out request for UserId: {request.UserId}");
+                
+                var today = DateTime.UtcNow.Date;
+                var existingRecord = await _context.AttendanceRecords
+                    .FirstOrDefaultAsync(a => a.UserId == request.UserId && a.Date.Date == today);
+
+                if (existingRecord == null)
+                {
+                    return BadRequest(new { success = false, message = "Chưa chấm công vào, không thể chấm công ra" });
+                }
+
+                // Update existing record
+                existingRecord.CheckOutTime = DateTime.UtcNow;
+                existingRecord.UpdatedAt = DateTime.UtcNow;
+                Console.WriteLine($"Updated check-out time for UserId: {request.UserId}");
+
+                await _context.SaveChangesAsync();
+                Console.WriteLine("Successfully saved check-out record");
+
+                return Ok(new { success = true, message = "Chấm công ra thành công" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "Lỗi khi chấm công ra", error = ex.Message });
             }
         }
 
