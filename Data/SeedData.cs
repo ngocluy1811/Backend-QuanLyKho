@@ -325,12 +325,30 @@ namespace FertilizerWarehouseAPI.Data
                 return;
             }
 
+            // Get or create a default category
+            var category = await context.ProductCategories.FirstOrDefaultAsync();
+            if (category == null)
+            {
+                // Create a default category
+                category = new ProductCategory
+                {
+                    CategoryName = "Phân bón",
+                    Description = "Danh mục phân bón",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                context.ProductCategories.Add(category);
+                await context.SaveChangesAsync();
+                Console.WriteLine("Created default category");
+            }
+
             var products = new List<Product>
             {
                 new Product
                 {
                     CompanyId = company.Id,
-                    CategoryId = 4, // Assuming category 4 exists
+                    CategoryId = category.Id,
                     Status = "Active",
                     ProductName = "NPK HaiDuong 20-10-24+50B (Chuyên Cà Phê)",
                     Description = "Phân NPK chuyên dùng cho cà phê",
@@ -350,7 +368,7 @@ namespace FertilizerWarehouseAPI.Data
                 new Product
                 {
                     CompanyId = company.Id,
-                    CategoryId = 4,
+                    CategoryId = category.Id,
                     Status = "Active",
                     ProductName = "NPK HaiDuong 15-15-15",
                     Description = "Phân NPK cân bằng",
@@ -370,7 +388,7 @@ namespace FertilizerWarehouseAPI.Data
                 new Product
                 {
                     CompanyId = company.Id,
-                    CategoryId = 4,
+                    CategoryId = category.Id,
                     Status = "Active",
                     ProductName = "Phân hữu cơ khoáng HD 304",
                     Description = "Phân hữu cơ khoáng cao cấp",
@@ -390,7 +408,7 @@ namespace FertilizerWarehouseAPI.Data
                 new Product
                 {
                     CompanyId = company.Id,
-                    CategoryId = 4,
+                    CategoryId = category.Id,
                     Status = "Active",
                     ProductName = "Hữu cơ HD BIOMIX",
                     Description = "Phân hữu cơ sinh học",
@@ -406,7 +424,7 @@ namespace FertilizerWarehouseAPI.Data
                 new Product
                 {
                     CompanyId = company.Id,
-                    CategoryId = 4,
+                    CategoryId = category.Id,
                     Status = "Active",
                     ProductName = "HD Strong",
                     Description = "Phân bón HD Strong",
@@ -422,7 +440,7 @@ namespace FertilizerWarehouseAPI.Data
                 new Product
                 {
                     CompanyId = company.Id,
-                    CategoryId = 4,
+                    CategoryId = category.Id,
                     Status = "Active",
                     ProductName = "HD Active",
                     Description = "Phân bón HD Active",
@@ -438,7 +456,7 @@ namespace FertilizerWarehouseAPI.Data
                 new Product
                 {
                     CompanyId = company.Id,
-                    CategoryId = 4,
+                    CategoryId = category.Id,
                     Status = "Active",
                     ProductName = "HD 302",
                     Description = "Phân bón HD 302",
@@ -454,7 +472,7 @@ namespace FertilizerWarehouseAPI.Data
                 new Product
                 {
                     CompanyId = company.Id,
-                    CategoryId = 4,
+                    CategoryId = category.Id,
                     Status = "Active",
                     ProductName = "HD GREEN",
                     Description = "Phân bón HD GREEN",
@@ -470,7 +488,7 @@ namespace FertilizerWarehouseAPI.Data
                 new Product
                 {
                     CompanyId = company.Id,
-                    CategoryId = 4,
+                    CategoryId = category.Id,
                     Status = "Active",
                     ProductName = "HD GOLD",
                     Description = "Phân bón HD GOLD",
@@ -486,7 +504,7 @@ namespace FertilizerWarehouseAPI.Data
                 new Product
                 {
                     CompanyId = company.Id,
-                    CategoryId = 4,
+                    CategoryId = category.Id,
                     Status = "Active",
                     ProductName = "Nitrate Calcium - Boronica HaiDuong",
                     Description = "Canxi Nitrate Boronica",
@@ -507,7 +525,7 @@ namespace FertilizerWarehouseAPI.Data
                 products.Add(new Product
                 {
                     CompanyId = company.Id,
-                    CategoryId = 4,
+                    CategoryId = category.Id,
                     Status = "Active",
                     ProductName = $"Product {i}",
                     Description = $"Description for product {i}",
