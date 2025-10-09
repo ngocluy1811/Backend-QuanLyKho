@@ -286,20 +286,80 @@ public class ProductsController : ControllerBase
                 })
                 .FirstOrDefaultAsync();
 
-            return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, createdProduct);
-        }
-        catch (Exception ex)
+        return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, createdProduct);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error creating product: {ex.Message}");
+        Console.WriteLine($"Stack trace: {ex.StackTrace}");
+        return StatusCode(500, new { 
+            message = "An error occurred while creating product", 
+            error = ex.Message,
+            stackTrace = ex.StackTrace,
+            innerException = ex.InnerException?.Message
+        });
+    }
+}
+
+// POST: api/products/calculate-export-prices
+[HttpPost("calculate-export-prices")]
+[AllowAnonymous]
+public async Task<IActionResult> CalculateExportPrices([FromBody] CalculateExportPricesRequest request)
+{
+    try
+    {
+        if (request == null || request.Products == null || !request.Products.Any())
         {
-            Console.WriteLine($"Error creating product: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
-            return StatusCode(500, new { 
-                message = "An error occurred while creating product", 
-                error = ex.Message,
-                stackTrace = ex.StackTrace,
-                innerException = ex.InnerException?.Message
+            return BadRequest(new { success = false, message = "Dữ liệu sản phẩm không hợp lệ" });
+        }
+
+        var result = new List<object>();
+        
+        foreach (var productRequest in request.Products)
+        {
+            var product = await _context.Products
+                .FirstOrDefaultAsync(p => p.Id == productRequest.ProductId);
+            
+            if (product == null)
+            {
+                result.Add(new
+                {
+                    ProductId = productRequest.ProductId,
+                    ProductName = "Không tìm thấy sản phẩm",
+                    UnitPrice = 0m,
+                    TotalPrice = 0m,
+                    Error = "Sản phẩm không tồn tại"
+                });
+                continue;
+            }
+
+            var unitPrice = product.UnitPrice > 0 ? product.UnitPrice : product.Price;
+            var totalPrice = unitPrice * productRequest.Quantity;
+
+            result.Add(new
+            {
+                ProductId = product.Id,
+                ProductName = product.ProductName,
+                ProductCode = product.ProductCode,
+                Unit = product.Unit,
+                UnitPrice = unitPrice,
+                Quantity = productRequest.Quantity,
+                TotalPrice = totalPrice
             });
         }
+
+        return Ok(new { success = true, data = result });
     }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error calculating export prices: {ex.Message}");
+        return StatusCode(500, new { 
+            success = false, 
+            message = "Lỗi khi tính giá xuất kho", 
+            error = ex.Message 
+        });
+    }
+}
 
     // PUT: api/Products/{id}
     [HttpPut("{id}")]
