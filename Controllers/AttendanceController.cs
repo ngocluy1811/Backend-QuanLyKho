@@ -52,7 +52,9 @@ namespace FertilizerWarehouseAPI.Controllers
                 // Filter by date if provided
                 if (date.HasValue)
                 {
-                    query = query.Where(a => a.Date.Date == date.Value.Date);
+                    // Ensure date is UTC to avoid PostgreSQL issues
+                    var utcDate = DateTime.SpecifyKind(date.Value.Date, DateTimeKind.Utc);
+                    query = query.Where(a => a.Date.Date == utcDate.Date);
                 }
 
                 var records = await query
@@ -99,49 +101,79 @@ namespace FertilizerWarehouseAPI.Controllers
                     return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ" });
                 }
 
+                Console.WriteLine($"Creating/updating attendance record for UserId: {request.UserId}");
+
                 // Use UserId from request
                 var userId = request.UserId;
-                var targetDate = !string.IsNullOrEmpty(request.Date) ? DateTime.Parse(request.Date) : DateTime.Today;
+                
+                // Ensure date is UTC
+                var targetDate = !string.IsNullOrEmpty(request.Date) 
+                    ? DateTime.SpecifyKind(DateTime.Parse(request.Date).Date, DateTimeKind.Utc) 
+                    : DateTime.UtcNow.Date;
+                
+                Console.WriteLine($"Target date: {targetDate:yyyy-MM-dd}");
+
                 var existingRecord = await _context.AttendanceRecords
                     .FirstOrDefaultAsync(a => a.UserId == userId && a.Date.Date == targetDate.Date);
 
                 if (existingRecord != null)
                 {
-                    // Update existing record
-                    existingRecord.CheckInTime = !string.IsNullOrEmpty(request.CheckInTime) ? DateTime.Parse(request.CheckInTime) : null;
-                    existingRecord.CheckOutTime = !string.IsNullOrEmpty(request.CheckOutTime) ? DateTime.Parse(request.CheckOutTime) : null;
+                    Console.WriteLine("Updating existing record");
+                    // Update existing record with UTC times
+                    existingRecord.CheckInTime = !string.IsNullOrEmpty(request.CheckInTime) 
+                        ? DateTime.SpecifyKind(DateTime.Parse(request.CheckInTime), DateTimeKind.Utc) 
+                        : null;
+                    existingRecord.CheckOutTime = !string.IsNullOrEmpty(request.CheckOutTime) 
+                        ? DateTime.SpecifyKind(DateTime.Parse(request.CheckOutTime), DateTimeKind.Utc) 
+                        : null;
                     existingRecord.OvertimeHours = request.OvertimeHours ?? 0;
-                    existingRecord.OvertimeStartTime = !string.IsNullOrEmpty(request.OvertimeStartTime) ? DateTime.Parse(request.OvertimeStartTime) : null;
-                    existingRecord.OvertimeEndTime = !string.IsNullOrEmpty(request.OvertimeEndTime) ? DateTime.Parse(request.OvertimeEndTime) : null;
+                    existingRecord.OvertimeStartTime = !string.IsNullOrEmpty(request.OvertimeStartTime) 
+                        ? DateTime.SpecifyKind(DateTime.Parse(request.OvertimeStartTime), DateTimeKind.Utc) 
+                        : null;
+                    existingRecord.OvertimeEndTime = !string.IsNullOrEmpty(request.OvertimeEndTime) 
+                        ? DateTime.SpecifyKind(DateTime.Parse(request.OvertimeEndTime), DateTimeKind.Utc) 
+                        : null;
                     existingRecord.Notes = request.Notes;
                     existingRecord.Status = request.Status;
-                    existingRecord.UpdatedAt = DateTime.Now;
+                    existingRecord.UpdatedAt = DateTime.UtcNow;
                 }
                 else
                 {
-                    // Create new record
+                    Console.WriteLine("Creating new record");
+                    // Create new record with UTC times
                     var newRecord = new AttendanceRecord
                     {
                         UserId = userId,
                         Date = targetDate,
-                        CheckInTime = !string.IsNullOrEmpty(request.CheckInTime) ? DateTime.Parse(request.CheckInTime) : null,
-                        CheckOutTime = !string.IsNullOrEmpty(request.CheckOutTime) ? DateTime.Parse(request.CheckOutTime) : null,
+                        CheckInTime = !string.IsNullOrEmpty(request.CheckInTime) 
+                            ? DateTime.SpecifyKind(DateTime.Parse(request.CheckInTime), DateTimeKind.Utc) 
+                            : null,
+                        CheckOutTime = !string.IsNullOrEmpty(request.CheckOutTime) 
+                            ? DateTime.SpecifyKind(DateTime.Parse(request.CheckOutTime), DateTimeKind.Utc) 
+                            : null,
                         OvertimeHours = request.OvertimeHours ?? 0,
-                        OvertimeStartTime = !string.IsNullOrEmpty(request.OvertimeStartTime) ? DateTime.Parse(request.OvertimeStartTime) : null,
-                        OvertimeEndTime = !string.IsNullOrEmpty(request.OvertimeEndTime) ? DateTime.Parse(request.OvertimeEndTime) : null,
+                        OvertimeStartTime = !string.IsNullOrEmpty(request.OvertimeStartTime) 
+                            ? DateTime.SpecifyKind(DateTime.Parse(request.OvertimeStartTime), DateTimeKind.Utc) 
+                            : null,
+                        OvertimeEndTime = !string.IsNullOrEmpty(request.OvertimeEndTime) 
+                            ? DateTime.SpecifyKind(DateTime.Parse(request.OvertimeEndTime), DateTimeKind.Utc) 
+                            : null,
                         Notes = request.Notes,
                         Status = request.Status,
-                        CreatedAt = DateTime.Now
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
                     };
                     _context.AttendanceRecords.Add(newRecord);
                 }
 
                 await _context.SaveChangesAsync();
+                Console.WriteLine("Successfully saved attendance record");
 
                 return Ok(new { success = true, message = "Lưu dữ liệu chấm công thành công" });
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"Error in CreateAttendanceRecord: {ex.Message}");
                 return StatusCode(500, new { success = false, message = "Lỗi khi lưu dữ liệu chấm công", error = ex.Message });
             }
         }
@@ -321,7 +353,8 @@ namespace FertilizerWarehouseAPI.Controllers
         {
             try
             {
-                var targetDate = date ?? DateTime.UtcNow.Date;
+                // Ensure date is UTC to avoid PostgreSQL issues
+                var targetDate = date.HasValue ? DateTime.SpecifyKind(date.Value.Date, DateTimeKind.Utc) : DateTime.UtcNow.Date;
                 Console.WriteLine($"Getting overtime status for date: {targetDate:yyyy-MM-dd}");
                 
                 var records = await _context.AttendanceRecords
@@ -342,6 +375,60 @@ namespace FertilizerWarehouseAPI.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { success = false, message = "Lỗi khi lấy trạng thái tăng ca", error = ex.Message });
+            }
+        }
+
+        // POST: api/attendance/create-sample
+        [HttpPost("create-sample")]
+        [AllowAnonymous]
+        public async Task<IActionResult> CreateSampleAttendance()
+        {
+            try
+            {
+                // Get first user for testing
+                var user = await _context.Users.FirstOrDefaultAsync();
+                if (user == null)
+                {
+                    return BadRequest(new { success = false, message = "No users found in database" });
+                }
+
+                var today = DateTime.UtcNow.Date;
+                
+                // Check if record already exists
+                var existingRecord = await _context.AttendanceRecords
+                    .FirstOrDefaultAsync(a => a.UserId == user.Id && a.Date.Date == today);
+
+                if (existingRecord != null)
+                {
+                    return Ok(new { success = true, message = "Sample attendance record already exists", data = new { UserId = user.Id, Date = today.ToString("yyyy-MM-dd") } });
+                }
+
+                // Create sample attendance record
+                var sampleRecord = new AttendanceRecord
+                {
+                    UserId = user.Id,
+                    Date = today,
+                    CheckInTime = DateTime.SpecifyKind(today.AddHours(8), DateTimeKind.Utc),
+                    CheckOutTime = DateTime.SpecifyKind(today.AddHours(17), DateTimeKind.Utc),
+                    OvertimeHours = 2.0m,
+                    OvertimeStartTime = DateTime.SpecifyKind(today.AddHours(17), DateTimeKind.Utc),
+                    OvertimeEndTime = DateTime.SpecifyKind(today.AddHours(19), DateTimeKind.Utc),
+                    IsOvertimeRequired = true,
+                    Status = "present",
+                    Notes = "Sample attendance record",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                _context.AttendanceRecords.Add(sampleRecord);
+                await _context.SaveChangesAsync();
+
+                Console.WriteLine($"Created sample attendance record for user {user.Id} on {today:yyyy-MM-dd}");
+                return Ok(new { success = true, message = "Sample attendance record created successfully", data = new { UserId = user.Id, Date = today.ToString("yyyy-MM-dd") } });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "Lỗi khi tạo dữ liệu mẫu", error = ex.Message });
             }
         }
     }
