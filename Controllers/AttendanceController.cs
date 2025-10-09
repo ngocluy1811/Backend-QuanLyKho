@@ -255,8 +255,8 @@ namespace FertilizerWarehouseAPI.Controllers
             }
         }
 
-        // POST: api/attendance/checkin
-        [HttpPost("checkin")]
+        // POST: api/attendance/check-in
+        [HttpPost("check-in")]
         [AllowAnonymous]
         public async Task<IActionResult> CheckIn([FromBody] CheckInRequest request)
         {
@@ -307,8 +307,8 @@ namespace FertilizerWarehouseAPI.Controllers
             }
         }
 
-        // POST: api/attendance/checkout
-        [HttpPost("checkout")]
+        // POST: api/attendance/check-out
+        [HttpPost("check-out")]
         [AllowAnonymous]
         public async Task<IActionResult> CheckOut([FromBody] CheckOutRequest request)
         {
