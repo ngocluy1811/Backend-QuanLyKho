@@ -34,7 +34,7 @@ namespace FertilizerWarehouseAPI.Controllers
             {
                 var employees = await _context.Users
                     .Include(u => u.Company)
-                    .Include(u => u.Department)
+                    // .Include(u => u.Department) // Removed to avoid null reference
                     // .Where(u => u.IsActive) // Removed to show all users including inactive
                     .Select(u => new
                     {
@@ -48,7 +48,7 @@ namespace FertilizerWarehouseAPI.Controllers
                         u.CompanyId,
                         CompanyName = u.Company.CompanyName,
                         u.DepartmentId,
-                        DepartmentName = u.Department != null ? u.Department.Name : null,
+                        DepartmentName = "Chưa phân công", // Simplified to avoid null reference
                         u.IsActive,
                         u.Level,
                         u.CreatedAt,

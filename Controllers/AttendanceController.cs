@@ -36,14 +36,14 @@ namespace FertilizerWarehouseAPI.Controllers
 
                 var records = await query
                     .Include(a => a.User)
-                    .ThenInclude(u => u.Department)
+                    // .ThenInclude(u => u.Department) // Removed to avoid null reference
                     .Select(a => new
                     {
                         a.Id,
                         a.UserId,
                         EmployeeId = a.User.Username,
                         EmployeeName = a.User.FullName,
-                        Department = a.User.Department != null ? a.User.Department.Name : "N/A",
+                        Department = "Chưa phân công", // Simplified to avoid null reference
                         Position = a.User.Role.ToString(),
                         Date = a.Date.ToString("yyyy-MM-dd"),
                         CheckIn = a.CheckInTime.HasValue ? a.CheckInTime.Value.ToString("HH:mm") : null,
