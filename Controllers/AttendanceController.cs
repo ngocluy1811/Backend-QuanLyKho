@@ -26,6 +26,10 @@ namespace FertilizerWarehouseAPI.Controllers
         {
             try
             {
+                // Check if AttendanceRecords table exists and has data
+                var totalRecords = await _context.AttendanceRecords.CountAsync();
+                Console.WriteLine($"Total attendance records: {totalRecords}");
+
                 var query = _context.AttendanceRecords.AsQueryable();
                 
                 // Filter by date if provided
@@ -35,8 +39,8 @@ namespace FertilizerWarehouseAPI.Controllers
                 }
 
                 var records = await query
-                    // .Include(a => a.User) // Removed to avoid null reference
-                    // .ThenInclude(u => u.Department) // Removed to avoid null reference
+                    .OrderBy(a => a.Date)
+                    .ThenBy(a => a.UserId)
                     .Select(a => new
                     {
                         a.Id,
@@ -56,7 +60,8 @@ namespace FertilizerWarehouseAPI.Controllers
                     })
                     .ToListAsync();
 
-                return Ok(new { success = true, data = records });
+                Console.WriteLine($"Found {records.Count} attendance records");
+                return Ok(new { success = true, data = records, total = totalRecords });
             }
             catch (Exception ex)
             {
@@ -258,6 +263,13 @@ namespace FertilizerWarehouseAPI.Controllers
         {
             try
             {
+                if (request == null)
+                {
+                    return BadRequest(new { success = false, message = "Request body cannot be null" });
+                }
+
+                Console.WriteLine($"Updating overtime status for UserId: {request.UserId}, IsOvertimeRequired: {request.IsOvertimeRequired}");
+                
                 var today = DateTime.Today;
                 var existingRecord = await _context.AttendanceRecords
                     .FirstOrDefaultAsync(a => a.UserId == request.UserId && a.Date.Date == today);
@@ -270,18 +282,23 @@ namespace FertilizerWarehouseAPI.Controllers
                         UserId = request.UserId,
                         Date = today,
                         IsOvertimeRequired = request.IsOvertimeRequired,
-                        CreatedAt = DateTime.UtcNow
+                        Status = "present",
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
                     };
                     _context.AttendanceRecords.Add(newRecord);
+                    Console.WriteLine($"Created new attendance record for UserId: {request.UserId}");
                 }
                 else
                 {
                     // Update existing record
                     existingRecord.IsOvertimeRequired = request.IsOvertimeRequired;
                     existingRecord.UpdatedAt = DateTime.UtcNow;
+                    Console.WriteLine($"Updated existing attendance record for UserId: {request.UserId}");
                 }
 
                 await _context.SaveChangesAsync();
+                Console.WriteLine("Successfully saved attendance record");
 
                 return Ok(new { success = true, message = "Cập nhật trạng thái tăng ca thành công" });
             }
@@ -299,19 +316,22 @@ namespace FertilizerWarehouseAPI.Controllers
             try
             {
                 var targetDate = date ?? DateTime.Today;
+                Console.WriteLine($"Getting overtime status for date: {targetDate:yyyy-MM-dd}");
+                
                 var records = await _context.AttendanceRecords
                     .Where(a => a.Date.Date == targetDate.Date && a.IsOvertimeRequired == true)
-                    // .Include(a => a.User) // Removed to avoid null reference
+                    .OrderBy(a => a.UserId)
                     .Select(a => new
                     {
                         a.UserId,
                         EmployeeName = "Nhân viên", // Simplified to avoid null reference
                         a.IsOvertimeRequired,
-                        a.Date
+                        Date = a.Date.ToString("yyyy-MM-dd")
                     })
                     .ToListAsync();
 
-                return Ok(new { success = true, data = records });
+                Console.WriteLine($"Found {records.Count} overtime records for {targetDate:yyyy-MM-dd}");
+                return Ok(new { success = true, data = records, date = targetDate.ToString("yyyy-MM-dd") });
             }
             catch (Exception ex)
             {
