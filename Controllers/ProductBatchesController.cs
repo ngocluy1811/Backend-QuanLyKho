@@ -24,6 +24,25 @@ public class ProductBatchesController : ControllerBase
         {
             try
             {
+                Console.WriteLine("Getting product batches...");
+                
+                // Check if ProductBatches table exists and has data
+                var totalBatches = await _context.ProductBatches.CountAsync();
+                Console.WriteLine($"Total product batches: {totalBatches}");
+
+                // If no batches exist, return empty array
+                if (totalBatches == 0)
+                {
+                    Console.WriteLine("No product batches found, returning empty array");
+                    return Ok(new { 
+                        success = true, 
+                        data = new List<object>(),
+                        currentPage = 1,
+                        totalPages = 1,
+                        totalItems = 0
+                    });
+                }
+
                 var batches = await _context.ProductBatches
                 .Include(pb => pb.Product)
                 .Include(pb => pb.Supplier)
@@ -31,13 +50,25 @@ public class ProductBatchesController : ControllerBase
                 {
                     pb.Id,
                     pb.BatchNumber,
-                        pb.Quantity,
+                    pb.BatchName,
+                    pb.Description,
+                    pb.Quantity,
+                    pb.RemainingQuantity,
+                    pb.InitialQuantity,
+                    pb.CurrentQuantity,
                         pb.UnitPrice,
                         pb.TotalValue,
-                    pb.ProductionDate,
-                    pb.ExpiryDate,
+                        pb.ProductionDate,
+                        pb.ExpiryDate,
                     pb.Status,
+                    pb.QualityStatus,
+                        pb.Notes,
+                    pb.NgayVe,
+                    pb.SoDotVe,
+                    pb.SoXeContainerTungDot,
+                        pb.NgayVeDetails,
                     pb.CreatedAt,
+                        pb.UpdatedAt,
                         ProductId = pb.ProductId,
                         ProductName = pb.Product != null ? pb.Product.ProductName : "N/A",
                         ProductCode = pb.Product != null ? pb.Product.ProductCode : "N/A",
@@ -46,6 +77,8 @@ public class ProductBatchesController : ControllerBase
                     })
                     .OrderByDescending(pb => pb.CreatedAt)
                 .ToListAsync();
+
+                Console.WriteLine($"Found {batches.Count} product batches");
 
                 return Ok(new { 
                     success = true, 
@@ -58,6 +91,7 @@ public class ProductBatchesController : ControllerBase
             catch (Exception ex)
             {
                 Console.WriteLine($"Error getting product batches: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 return StatusCode(500, new { 
                     success = false, 
                     message = "Lỗi khi lấy danh sách lô hàng", 
@@ -103,17 +137,27 @@ public class ProductBatchesController : ControllerBase
             }
 
                 var productBatch = new ProductBatch
-            {
-                BatchNumber = request.BatchNumber,
-                ProductId = request.ProductId,
+                {
+                    BatchNumber = request.BatchNumber,
+                    BatchName = request.BatchName,
+                    Description = request.Description,
+                    ProductId = request.ProductId,
                     SupplierId = request.SupplierId,
                     Quantity = request.Quantity,
+                    RemainingQuantity = request.RemainingQuantity,
+                    InitialQuantity = request.InitialQuantity,
+                    CurrentQuantity = request.CurrentQuantity,
                     UnitPrice = request.UnitPrice,
-                    TotalValue = request.Quantity * request.UnitPrice,
-                ProductionDate = request.ProductionDate,
-                ExpiryDate = request.ExpiryDate,
-                Status = request.Status ?? "Active",
-                Notes = request.Notes,
+                    TotalValue = request.TotalValue,
+                    ProductionDate = request.ProductionDate,
+                    ExpiryDate = request.ExpiryDate,
+                    Status = request.Status,
+                    QualityStatus = request.QualityStatus,
+                    Notes = request.Notes,
+                    NgayVe = request.NgayVe,
+                    SoDotVe = request.SoDotVe,
+                    SoXeContainerTungDot = request.SoXeContainerTungDot,
+                    NgayVeDetails = request.NgayVeDetails,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
@@ -214,13 +258,24 @@ public class ProductBatchesController : ControllerBase
 public class CreateProductBatchRequest
 {
     public string BatchNumber { get; set; } = string.Empty;
+    public string BatchName { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public int ProductId { get; set; }
-        public int? SupplierId { get; set; }
-        public int Quantity { get; set; }
-        public decimal UnitPrice { get; set; }
+    public int? SupplierId { get; set; }
+    public int Quantity { get; set; }
+    public int RemainingQuantity { get; set; }
+    public int InitialQuantity { get; set; }
+    public int CurrentQuantity { get; set; }
+    public decimal? UnitPrice { get; set; }
+    public decimal? TotalValue { get; set; }
     public DateTime? ProductionDate { get; set; }
     public DateTime? ExpiryDate { get; set; }
-    public string? Status { get; set; }
+    public string Status { get; set; } = "Active";
+    public int QualityStatus { get; set; } = 1;
     public string? Notes { get; set; }
-    }
+    public DateTime? NgayVe { get; set; }
+    public int? SoDotVe { get; set; }
+    public int? SoXeContainerTungDot { get; set; }
+    public string? NgayVeDetails { get; set; }
+}
 }
