@@ -86,55 +86,6 @@ namespace FertilizerWarehouseAPI.Controllers
             }
         }
 
-        // POST: api/attendance/check-in
-        [HttpPost("check-in")]
-        [AllowAnonymous]
-        public async Task<IActionResult> CheckIn([FromBody] CheckInRequest request)
-        {
-            try
-            {
-                // Use userId from request
-                var userId = request.UserId;
-                
-                // Use selected date or today
-                var targetDate = !string.IsNullOrEmpty(request.Date) ? DateTime.Parse(request.Date) : DateTime.Today;
-                var existingRecord = await _context.AttendanceRecords
-                    .FirstOrDefaultAsync(a => a.UserId == userId && a.Date.Date == targetDate.Date);
-
-                if (existingRecord != null && existingRecord.CheckInTime.HasValue)
-                {
-                    return BadRequest(new { success = false, message = $"Bạn đã chấm công vào ngày {targetDate:dd/MM/yyyy}" });
-                }
-
-                var checkInTime = DateTime.Parse(request.CheckInTime);
-                var currentTime = DateTime.Now;
-
-                if (existingRecord == null)
-                {
-                    var newRecord = new AttendanceRecord
-                    {
-                        UserId = userId,
-                        Date = targetDate,
-                        CheckInTime = checkInTime,
-                        CreatedAt = currentTime
-                    };
-                    _context.AttendanceRecords.Add(newRecord);
-                }
-                else
-                {
-                    existingRecord.CheckInTime = checkInTime;
-                    existingRecord.UpdatedAt = currentTime;
-                }
-
-                await _context.SaveChangesAsync();
-
-                return Ok(new { success = true, message = $"Chấm công vào thành công ngày {targetDate:dd/MM/yyyy}" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi khi chấm công vào", error = ex.Message });
-            }
-        }
 
         // POST: api/attendance/records
         [HttpPost("records")]
@@ -195,59 +146,6 @@ namespace FertilizerWarehouseAPI.Controllers
             }
         }
 
-        // POST: api/attendance/check-out
-        [HttpPost("check-out")]
-        [AllowAnonymous]
-        public async Task<IActionResult> CheckOut([FromBody] CheckOutRequest request)
-        {
-            try
-            {
-                // Use userId from request
-                var userId = request.UserId;
-                
-                // Use selected date or today
-                var targetDate = !string.IsNullOrEmpty(request.Date) ? DateTime.Parse(request.Date) : DateTime.Today;
-                var existingRecord = await _context.AttendanceRecords
-                    .FirstOrDefaultAsync(a => a.UserId == userId && a.Date.Date == targetDate.Date);
-
-                if (existingRecord == null)
-                {
-                    return BadRequest(new { success = false, message = $"Bạn chưa chấm công vào ngày {targetDate:dd/MM/yyyy}" });
-                }
-
-                if (existingRecord.CheckOutTime.HasValue)
-                {
-                    return BadRequest(new { success = false, message = $"Bạn đã chấm công ra ngày {targetDate:dd/MM/yyyy}" });
-                }
-
-                var checkOutTime = DateTime.Parse(request.CheckOutTime);
-                var currentTime = DateTime.Now;
-
-                existingRecord.CheckOutTime = checkOutTime;
-                existingRecord.UpdatedAt = currentTime;
-
-                // Calculate overtime if needed
-                if (checkOutTime.Hour >= 17) // After 5 PM
-                {
-                    var overtimeStart = new DateTime(targetDate.Year, targetDate.Month, targetDate.Day, 17, 0, 0);
-                    var overtimeHours = (checkOutTime - overtimeStart).TotalHours;
-                    if (overtimeHours > 0)
-                    {
-                        existingRecord.OvertimeHours = (decimal)overtimeHours;
-                        existingRecord.OvertimeStartTime = overtimeStart;
-                        existingRecord.OvertimeEndTime = checkOutTime;
-                    }
-                }
-
-                await _context.SaveChangesAsync();
-
-                return Ok(new { success = true, message = $"Chấm công ra thành công ngày {targetDate:dd/MM/yyyy}" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi khi chấm công ra", error = ex.Message });
-            }
-        }
 
         private int? GetCurrentUserId()
         {
