@@ -49,10 +49,10 @@ namespace FertilizerWarehouseAPI.Controllers
 
                 return Ok(new { 
                     success = true, 
-                    data = batches,
+                    data = batches ?? new List<object>(),
                     currentPage = 1,
                     totalPages = 1,
-                    totalItems = batches.Count
+                    totalItems = batches?.Count ?? 0
                 });
             }
             catch (Exception ex)
