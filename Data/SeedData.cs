@@ -244,5 +244,46 @@ namespace FertilizerWarehouseAPI.Data
             context.RolePermissions.AddRange(permissions);
             await context.SaveChangesAsync();
         }
+
+        public static async System.Threading.Tasks.Task SeedAttendanceDataAsync(ApplicationDbContext context)
+        {
+            if (await context.AttendanceRecords.AnyAsync())
+            {
+                return;
+            }
+
+            var users = await context.Users.Take(3).ToListAsync();
+            if (!users.Any())
+            {
+                return;
+            }
+
+            var attendanceRecords = new List<AttendanceRecord>();
+            var today = DateTime.Today;
+
+            for (int i = 0; i < 7; i++)
+            {
+                var date = today.AddDays(-i);
+                foreach (var user in users)
+                {
+                    var record = new AttendanceRecord
+                    {
+                        UserId = user.Id,
+                        Date = date,
+                        CheckInTime = date.AddHours(8), // 8:00 AM
+                        CheckOutTime = date.AddHours(17), // 5:00 PM
+                        OvertimeHours = i % 2 == 0 ? 2 : 0, // Some overtime
+                        IsOvertimeRequired = i % 2 == 0,
+                        Status = "present",
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    attendanceRecords.Add(record);
+                }
+            }
+
+            context.AttendanceRecords.AddRange(attendanceRecords);
+            await context.SaveChangesAsync();
+        }
     }
 }

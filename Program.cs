@@ -248,6 +248,10 @@ using (var scope = app.Services.CreateScope())
         // Seed sample data
         await SeedData.SeedSampleDataAsync(context);
         Log.Information("Sample data seeded successfully");
+        
+        // Seed attendance data
+        await SeedData.SeedAttendanceDataAsync(context);
+        Log.Information("Attendance data seeded successfully");
     }
     catch (Exception ex)
     {
