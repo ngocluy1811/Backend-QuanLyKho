@@ -39,6 +39,7 @@ public class CategoriesController : ControllerBase
                     c.CreatedAt,
                     c.UpdatedAt
                 })
+                .OrderBy(c => c.Id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();

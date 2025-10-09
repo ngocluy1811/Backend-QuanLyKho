@@ -42,6 +42,7 @@ public class SuppliersController : ControllerBase
                     s.CreatedAt,
                     s.UpdatedAt
                 })
+                .OrderBy(s => s.Id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();

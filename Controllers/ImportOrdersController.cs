@@ -108,6 +108,7 @@ public class ImportOrdersController : ControllerBase
                     io.CreatedAt,
                     io.UpdatedAt
                 })
+                .OrderBy(o => o.Id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();

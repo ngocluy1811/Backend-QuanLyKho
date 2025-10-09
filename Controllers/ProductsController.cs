@@ -81,6 +81,7 @@ public class ProductsController : ControllerBase
             var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
             var products = await query
+                .OrderBy(p => p.Id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();

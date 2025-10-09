@@ -253,7 +253,7 @@ namespace FertilizerWarehouseAPI.Data
                 return;
             }
 
-            var users = await context.Users.Take(3).ToListAsync();
+            var users = await context.Users.OrderBy(u => u.Id).Take(3).ToListAsync();
             if (!users.Any())
             {
                 return;
@@ -273,9 +273,12 @@ namespace FertilizerWarehouseAPI.Data
                         Date = date,
                         CheckInTime = date.AddHours(8), // 8:00 AM
                         CheckOutTime = date.AddHours(17), // 5:00 PM
-                        OvertimeHours = i % 2 == 0 ? 2 : 0, // Some overtime
+                        OvertimeHours = i % 2 == 0 ? 2.0m : 0.0m, // Use decimal literal
+                        OvertimeStartTime = i % 2 == 0 ? date.AddHours(17) : (DateTime?)null,
+                        OvertimeEndTime = i % 2 == 0 ? date.AddHours(19) : (DateTime?)null,
                         IsOvertimeRequired = i % 2 == 0,
                         Status = "present",
+                        Notes = $"Attendance record for {user.FullName}",
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     };
@@ -283,8 +286,16 @@ namespace FertilizerWarehouseAPI.Data
                 }
             }
 
-            context.AttendanceRecords.AddRange(attendanceRecords);
-            await context.SaveChangesAsync();
+            try
+            {
+                context.AttendanceRecords.AddRange(attendanceRecords);
+                await context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't fail the entire seeding process
+                Console.WriteLine($"Error seeding attendance data: {ex.Message}");
+            }
         }
     }
 }
