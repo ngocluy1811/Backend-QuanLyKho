@@ -32,10 +32,8 @@ namespace FertilizerWarehouseAPI.Controllers
         {
             try
             {
+                // Simplified query to avoid any potential issues
                 var employees = await _context.Users
-                    // .Include(u => u.Company) // Removed to avoid potential null reference
-                    // .Include(u => u.Department) // Removed to avoid null reference
-                    // .Where(u => u.IsActive) // Removed to show all users including inactive
                     .Select(u => new
                     {
                         u.Id,
@@ -46,9 +44,9 @@ namespace FertilizerWarehouseAPI.Controllers
                         u.Role,
                         RoleName = u.Role.ToString(),
                         u.CompanyId,
-                        CompanyName = "Công ty mặc định", // Simplified to avoid null reference
+                        CompanyName = "Công ty mặc định",
                         u.DepartmentId,
-                        DepartmentName = "Chưa phân công", // Simplified to avoid null reference
+                        DepartmentName = "Chưa phân công",
                         u.IsActive,
                         u.Level,
                         u.CreatedAt,
@@ -56,17 +54,18 @@ namespace FertilizerWarehouseAPI.Controllers
                         u.LastLoginAt,
                         u.PasswordExpiresAt,
                         u.MustChangePassword,
-                        IsLocked = u.LockedUntil > DateTime.UtcNow
+                        IsLocked = u.LockedUntil.HasValue && u.LockedUntil > DateTime.UtcNow
                     })
                     .ToListAsync();
 
-                return Ok(employees);
+                return Ok(new { success = true, count = employees.Count, data = employees });
             }
             catch (Exception ex)
             {
                 // Log the full exception for debugging
                 Console.WriteLine($"Error in GetEmployees: {ex}");
                 return StatusCode(500, new { 
+                    success = false,
                     message = "An error occurred while retrieving employees", 
                     error = ex.Message,
                     stackTrace = ex.StackTrace,
