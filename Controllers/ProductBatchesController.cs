@@ -185,26 +185,26 @@ public class ProductBatchesController : ControllerBase
             }
 
                 var productBatch = new ProductBatch
-                {
-                    BatchNumber = request.BatchNumber,
-                    BatchName = request.BatchName,
-                    Description = request.Description,
-                    ProductId = request.ProductId,
+            {
+                BatchNumber = request.BatchNumber,
+                BatchName = request.BatchName,
+                Description = request.Description,
+                ProductId = request.ProductId,
                     SupplierId = request.SupplierId,
-                    Quantity = request.Quantity,
-                    RemainingQuantity = request.RemainingQuantity.HasValue ? request.RemainingQuantity.Value : request.Quantity,
-                    InitialQuantity = request.InitialQuantity.HasValue ? request.InitialQuantity.Value : request.Quantity,
-                    CurrentQuantity = request.CurrentQuantity.HasValue ? request.CurrentQuantity.Value : request.Quantity,
+                Quantity = request.Quantity,
+                    RemainingQuantity = request.RemainingQuantity ?? request.Quantity,
+                    InitialQuantity = request.InitialQuantity ?? request.Quantity,
+                    CurrentQuantity = request.CurrentQuantity ?? request.Quantity,
                     UnitPrice = request.UnitPrice,
                     TotalValue = request.TotalValue,
                     ProductionDate = request.ProductionDate.HasValue ? DateTime.SpecifyKind(request.ProductionDate.Value, DateTimeKind.Utc) : null,
                     ExpiryDate = request.ExpiryDate.HasValue ? DateTime.SpecifyKind(request.ExpiryDate.Value, DateTimeKind.Utc) : null,
-                    Status = request.Status ?? "Active",
-                    QualityStatus = request.QualityStatus.HasValue ? request.QualityStatus.Value : 1,
-                    Notes = request.Notes,
+                Status = request.Status ?? "Active",
+                    QualityStatus = request.QualityStatus ?? 1,
+                Notes = request.Notes,
                     NgayVe = request.NgayVe.HasValue ? DateTime.SpecifyKind(request.NgayVe.Value, DateTimeKind.Utc) : null,
-                    SoDotVe = request.SoDotVe,
-                    SoXeContainerTungDot = request.SoXeContainerTungDot,
+                SoDotVe = request.SoDotVe,
+                SoXeContainerTungDot = request.SoXeContainerTungDot,
                     NgayVeDetails = request.NgayVeDetails,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
@@ -250,8 +250,8 @@ public class ProductBatchesController : ControllerBase
                 .FirstOrDefaultAsync();
 
                 return Ok(new { success = true, data = createdBatch, message = "Tạo lô hàng thành công" });
-            }
-            catch (Exception ex)
+        }
+        catch (Exception ex)
             {
                 Console.WriteLine($"Error creating product batch: {ex.Message}");
                 Console.WriteLine($"Stack trace: {ex.StackTrace}");
@@ -322,15 +322,15 @@ public class CreateProductBatchRequest
     public int ProductId { get; set; }
     public int? SupplierId { get; set; }
     public int Quantity { get; set; }
-    public int RemainingQuantity { get; set; }
-    public int InitialQuantity { get; set; }
-    public int CurrentQuantity { get; set; }
+    public int? RemainingQuantity { get; set; }
+    public int? InitialQuantity { get; set; }
+    public int? CurrentQuantity { get; set; }
     public decimal? UnitPrice { get; set; }
     public decimal? TotalValue { get; set; }
     public DateTime? ProductionDate { get; set; }
     public DateTime? ExpiryDate { get; set; }
-    public string Status { get; set; } = "Active";
-    public int QualityStatus { get; set; } = 1;
+    public string? Status { get; set; }
+    public int? QualityStatus { get; set; }
     public string? Notes { get; set; }
     public DateTime? NgayVe { get; set; }
     public int? SoDotVe { get; set; }
