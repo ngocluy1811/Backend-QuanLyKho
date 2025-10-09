@@ -334,6 +334,7 @@ namespace FertilizerWarehouseAPI.Data
                 {
                     CategoryName = "Phân bón",
                     Description = "Danh mục phân bón",
+                    CompanyId = company.Id,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
