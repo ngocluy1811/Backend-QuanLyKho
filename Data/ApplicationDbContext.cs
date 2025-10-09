@@ -48,8 +48,8 @@ public class ApplicationDbContext : DbContext
 
     // Products
     public DbSet<Product> Products { get; set; }
-    public DbSet<ProductCategory> ProductCategories { get; set; }
     public DbSet<ProductBatch> ProductBatches { get; set; }
+    public DbSet<ProductCategory> ProductCategories { get; set; }
     public DbSet<ProductComposition> ProductCompositions { get; set; }
 
     // Import/Export Orders
