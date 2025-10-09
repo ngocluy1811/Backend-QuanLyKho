@@ -37,10 +37,10 @@ namespace FertilizerWarehouseAPI.Controllers
                     .Select(u => new
                     {
                         u.Id,
-                        u.Username,
-                        u.Email,
-                        u.FullName,
-                        u.Phone,
+                        Username = u.Username ?? "",
+                        Email = u.Email ?? "",
+                        FullName = u.FullName ?? "",
+                        Phone = u.Phone ?? "",
                         u.Role,
                         RoleName = u.Role.ToString(),
                         u.CompanyId,
@@ -48,11 +48,11 @@ namespace FertilizerWarehouseAPI.Controllers
                         u.DepartmentId,
                         DepartmentName = "Chưa phân công",
                         u.IsActive,
-                        u.Level,
+                        Level = u.Level ?? 0,
                         u.CreatedAt,
-                        u.UpdatedAt,
-                        u.LastLoginAt,
-                        u.PasswordExpiresAt,
+                        UpdatedAt = u.UpdatedAt ?? u.CreatedAt,
+                        LastLoginAt = u.LastLoginAt ?? (DateTime?)null,
+                        PasswordExpiresAt = u.PasswordExpiresAt ?? (DateTime?)null,
                         u.MustChangePassword,
                         IsLocked = u.LockedUntil.HasValue && u.LockedUntil > DateTime.UtcNow
                     })
