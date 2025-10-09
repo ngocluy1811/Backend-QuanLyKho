@@ -22,6 +22,7 @@ namespace FertilizerWarehouseAPI.Models.Entities
         public virtual Supplier? Supplier { get; set; }
 
         public int Quantity { get; set; }
+        public int CurrentQuantity { get; set; }
         public decimal UnitPrice { get; set; }
         public decimal TotalValue { get; set; }
 
@@ -30,6 +31,9 @@ namespace FertilizerWarehouseAPI.Models.Entities
 
         [MaxLength(50)]
         public string Status { get; set; } = "Active";
+        
+        [MaxLength(50)]
+        public string QualityStatus { get; set; } = "Good";
 
         [MaxLength(500)]
         public string? Notes { get; set; }
