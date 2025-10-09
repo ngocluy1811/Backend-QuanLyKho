@@ -252,6 +252,10 @@ using (var scope = app.Services.CreateScope())
         // Seed attendance data - Temporarily disabled due to DateTime UTC issues
         // await SeedData.SeedAttendanceDataAsync(context);
         // Log.Information("Attendance data seeded successfully");
+        
+        // Seed products data
+        await SeedData.SeedProductsDataAsync(context);
+        Log.Information("Products data seeded successfully");
     }
     catch (Exception ex)
     {

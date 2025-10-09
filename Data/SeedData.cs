@@ -306,5 +306,246 @@ namespace FertilizerWarehouseAPI.Data
                 }
             }
         }
+
+        public static async System.Threading.Tasks.Task SeedProductsDataAsync(ApplicationDbContext context)
+        {
+            if (await context.Products.AnyAsync())
+            {
+                Console.WriteLine("Products already exist, skipping product seeding");
+                return;
+            }
+
+            Console.WriteLine("Seeding products data...");
+
+            // Get default company
+            var company = await context.Companies.FirstOrDefaultAsync();
+            if (company == null)
+            {
+                Console.WriteLine("No company found, cannot seed products");
+                return;
+            }
+
+            var products = new List<Product>
+            {
+                new Product
+                {
+                    CompanyId = company.Id,
+                    CategoryId = 4, // Assuming category 4 exists
+                    Status = "Active",
+                    Name = "NPK HaiDuong 20-10-24+50B (Chuyên Cà Phê)",
+                    Description = "Phân NPK chuyên dùng cho cà phê",
+                    Unit = "kg",
+                    CurrentStock = 0,
+                    MinStock = 1000,
+                    CostPrice = 0.00m,
+                    SellingPrice = 0.00m,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    CreatedBy = 1,
+                    Code = "NPK001",
+                    SupplierId = 2,
+                    SupplierCode = "NPKHAIDUONG",
+                    BatchNumber = "LO001",
+                    ExpiryDate = DateTime.SpecifyKind(DateTime.Parse("2025-10-08"), DateTimeKind.Utc),
+                    ManufacturingDate = DateTime.SpecifyKind(DateTime.Parse("2025-09-23"), DateTimeKind.Utc)
+                },
+                new Product
+                {
+                    CompanyId = company.Id,
+                    CategoryId = 4,
+                    Status = "Active",
+                    Name = "NPK HaiDuong 15-15-15",
+                    Description = "Phân NPK cân bằng",
+                    Unit = "kg",
+                    CurrentStock = 0,
+                    MinStock = 1000,
+                    CostPrice = 0.00m,
+                    SellingPrice = 0.00m,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    CreatedBy = 1,
+                    Code = "NPK002",
+                    SupplierId = 3,
+                    SupplierCode = "NPKHAIDUONG",
+                    BatchNumber = "PNK3",
+                    ExpiryDate = DateTime.SpecifyKind(DateTime.Parse("2026-02-28"), DateTimeKind.Utc),
+                    ManufacturingDate = DateTime.SpecifyKind(DateTime.Parse("2025-09-01"), DateTimeKind.Utc)
+                },
+                new Product
+                {
+                    CompanyId = company.Id,
+                    CategoryId = 4,
+                    Status = "Active",
+                    Name = "Phân hữu cơ khoáng HD 304",
+                    Description = "Phân hữu cơ khoáng cao cấp",
+                    Unit = "kg",
+                    CurrentStock = 0,
+                    MinStock = 1000,
+                    CostPrice = 0.00m,
+                    SellingPrice = 0.00m,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    CreatedBy = 1,
+                    Code = "NPK003",
+                    SupplierId = 2,
+                    SupplierCode = "NPKHAIDUONG",
+                    BatchNumber = "LO002",
+                    ExpiryDate = DateTime.SpecifyKind(DateTime.Parse("2025-10-09"), DateTimeKind.Utc),
+                    ManufacturingDate = DateTime.SpecifyKind(DateTime.Parse("2025-09-27"), DateTimeKind.Utc)
+                },
+                new Product
+                {
+                    CompanyId = company.Id,
+                    CategoryId = 4,
+                    Status = "Active",
+                    Name = "Hữu cơ HD BIOMIX",
+                    Description = "Phân hữu cơ sinh học",
+                    Unit = "kg",
+                    CurrentStock = 0,
+                    MinStock = 1000,
+                    CostPrice = 0.00m,
+                    SellingPrice = 0.00m,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    CreatedBy = 1,
+                    Code = "NPK004"
+                },
+                new Product
+                {
+                    CompanyId = company.Id,
+                    CategoryId = 4,
+                    Status = "Active",
+                    Name = "HD Strong",
+                    Description = "Phân bón HD Strong",
+                    Unit = "kg",
+                    CurrentStock = 0,
+                    MinStock = 1000,
+                    CostPrice = 0.00m,
+                    SellingPrice = 0.00m,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    CreatedBy = 1,
+                    Code = "NPK005"
+                },
+                new Product
+                {
+                    CompanyId = company.Id,
+                    CategoryId = 4,
+                    Status = "Active",
+                    Name = "HD Active",
+                    Description = "Phân bón HD Active",
+                    Unit = "kg",
+                    CurrentStock = 0,
+                    MinStock = 1000,
+                    CostPrice = 0.00m,
+                    SellingPrice = 0.00m,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    CreatedBy = 1,
+                    Code = "NPK006"
+                },
+                new Product
+                {
+                    CompanyId = company.Id,
+                    CategoryId = 4,
+                    Status = "Active",
+                    Name = "HD 302",
+                    Description = "Phân bón HD 302",
+                    Unit = "kg",
+                    CurrentStock = 0,
+                    MinStock = 1000,
+                    CostPrice = 0.00m,
+                    SellingPrice = 0.00m,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    CreatedBy = 1,
+                    Code = "NPK007"
+                },
+                new Product
+                {
+                    CompanyId = company.Id,
+                    CategoryId = 4,
+                    Status = "Active",
+                    Name = "HD GREEN",
+                    Description = "Phân bón HD GREEN",
+                    Unit = "kg",
+                    CurrentStock = 0,
+                    MinStock = 1000,
+                    CostPrice = 0.00m,
+                    SellingPrice = 0.00m,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    CreatedBy = 1,
+                    Code = "NPK008"
+                },
+                new Product
+                {
+                    CompanyId = company.Id,
+                    CategoryId = 4,
+                    Status = "Active",
+                    Name = "HD GOLD",
+                    Description = "Phân bón HD GOLD",
+                    Unit = "kg",
+                    CurrentStock = 0,
+                    MinStock = 1000,
+                    CostPrice = 0.00m,
+                    SellingPrice = 0.00m,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    CreatedBy = 1,
+                    Code = "NPK009"
+                },
+                new Product
+                {
+                    CompanyId = company.Id,
+                    CategoryId = 4,
+                    Status = "Active",
+                    Name = "Nitrate Calcium - Boronica HaiDuong",
+                    Description = "Canxi Nitrate Boronica",
+                    Unit = "kg",
+                    CurrentStock = 0,
+                    MinStock = 1000,
+                    CostPrice = 0.00m,
+                    SellingPrice = 0.00m,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    CreatedBy = 1,
+                    Code = "NPK010"
+                }
+            };
+
+            // Add more products (continuing the pattern)
+            for (int i = 11; i <= 60; i++)
+            {
+                products.Add(new Product
+                {
+                    CompanyId = company.Id,
+                    CategoryId = 4,
+                    Status = "Active",
+                    Name = $"Product {i}",
+                    Description = $"Description for product {i}",
+                    Unit = "kg",
+                    CurrentStock = 0,
+                    MinStock = 1000,
+                    CostPrice = 0.00m,
+                    SellingPrice = 0.00m,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    CreatedBy = 1,
+                    Code = $"NPK{i:D3}"
+                });
+            }
+
+            try
+            {
+                context.Products.AddRange(products);
+                await context.SaveChangesAsync();
+                Console.WriteLine($"Successfully seeded {products.Count} products");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error seeding products: {ex.Message}");
+            }
+        }
     }
 }

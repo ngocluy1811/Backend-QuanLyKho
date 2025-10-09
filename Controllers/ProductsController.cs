@@ -191,6 +191,8 @@ public class ProductsController : ControllerBase
     {
         try
         {
+            Console.WriteLine($"Creating product: {request.ProductName}");
+            
             // Validate required fields
             if (string.IsNullOrEmpty(request.ProductCode) || string.IsNullOrEmpty(request.ProductName))
             {
@@ -217,6 +219,14 @@ public class ProductsController : ControllerBase
                 categoryName = category ?? string.Empty;
             }
 
+            // Ensure dates are UTC
+            var productionDate = request.ProductionDate.HasValue 
+                ? DateTime.SpecifyKind(request.ProductionDate.Value, DateTimeKind.Utc) 
+                : (DateTime?)null;
+            var expiryDate = request.ExpiryDate.HasValue 
+                ? DateTime.SpecifyKind(request.ExpiryDate.Value, DateTimeKind.Utc) 
+                : (DateTime?)null;
+
             var product = new Product
             {
                 ProductCode = request.ProductCode,
@@ -232,15 +242,17 @@ public class ProductsController : ControllerBase
                 CompanyId = request.CompanyId,
                 SupplierId = request.SupplierId,
                 Status = request.Status ?? "Active",
-                ProductionDate = request.ProductionDate,
-                ExpiryDate = request.ExpiryDate,
+                ProductionDate = productionDate,
+                ExpiryDate = expiryDate,
                 BatchNumber = request.BatchNumber,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
             _context.Products.Add(product);
             await _context.SaveChangesAsync();
+            Console.WriteLine($"Successfully created product with ID: {product.Id}");
 
             // Return the created product with related data
             var createdProduct = await _context.Products
@@ -278,7 +290,14 @@ public class ProductsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "An error occurred while creating product", error = ex.Message });
+            Console.WriteLine($"Error creating product: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return StatusCode(500, new { 
+                message = "An error occurred while creating product", 
+                error = ex.Message,
+                stackTrace = ex.StackTrace,
+                innerException = ex.InnerException?.Message
+            });
         }
     }
 
