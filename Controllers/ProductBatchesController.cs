@@ -317,7 +317,7 @@ public class ProductBatchesController : ControllerBase
         }
 
         // Helper method to update current quantity from import orders
-        private async Task UpdateCurrentQuantityFromImportOrders(int productBatchId)
+        private async System.Threading.Tasks.Task UpdateCurrentQuantityFromImportOrders(int productBatchId)
         {
             try
             {
@@ -344,7 +344,7 @@ public class ProductBatchesController : ControllerBase
         // Public method to recalculate all batch quantities
         [HttpPost("recalculate-quantities")]
         [AllowAnonymous]
-        public async Task<IActionResult> RecalculateAllBatchQuantities()
+        public async System.Threading.Tasks.Task<IActionResult> RecalculateAllBatchQuantities()
         {
             try
             {
