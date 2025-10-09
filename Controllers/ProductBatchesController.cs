@@ -122,9 +122,9 @@ public class ProductBatchesController : ControllerBase
         [HttpPost]
         [AllowAnonymous]
         public async Task<IActionResult> CreateProductBatch([FromBody] CreateProductBatchRequest request)
+    {
+        try
         {
-            try
-            {
                 Console.WriteLine("=== CreateProductBatch called ===");
                 Console.WriteLine($"Request is null: {request == null}");
                 
@@ -162,7 +162,7 @@ public class ProductBatchesController : ControllerBase
                 {
                     Console.WriteLine("Validation failed: Quantity is invalid");
                     return BadRequest(new { success = false, message = "Số lượng phải lớn hơn 0" });
-                }
+            }
 
             // Check if batch number already exists
             var existingBatch = await _context.ProductBatches
@@ -170,6 +170,7 @@ public class ProductBatchesController : ControllerBase
             
             if (existingBatch != null)
             {
+                    Console.WriteLine("Validation failed: BatchNumber already exists");
                     return BadRequest(new { success = false, message = "Mã lô hàng đã tồn tại" });
                 }
 
@@ -179,6 +180,7 @@ public class ProductBatchesController : ControllerBase
                 
             if (product == null)
             {
+                    Console.WriteLine("Validation failed: Product does not exist");
                     return BadRequest(new { success = false, message = "Sản phẩm không tồn tại" });
             }
 
@@ -190,15 +192,15 @@ public class ProductBatchesController : ControllerBase
                 ProductId = request.ProductId,
                     SupplierId = request.SupplierId,
                     Quantity = request.Quantity,
-                    RemainingQuantity = request.RemainingQuantity,
-                    InitialQuantity = request.InitialQuantity,
-                    CurrentQuantity = request.CurrentQuantity,
+                    RemainingQuantity = request.RemainingQuantity ?? request.Quantity,
+                    InitialQuantity = request.InitialQuantity ?? request.Quantity,
+                    CurrentQuantity = request.CurrentQuantity ?? request.Quantity,
                     UnitPrice = request.UnitPrice,
                     TotalValue = request.TotalValue,
                 ProductionDate = request.ProductionDate,
                 ExpiryDate = request.ExpiryDate,
-                    Status = request.Status,
-                    QualityStatus = request.QualityStatus,
+                Status = request.Status ?? "Active",
+                QualityStatus = request.QualityStatus ?? 1,
                 Notes = request.Notes,
                 NgayVe = request.NgayVe,
                 SoDotVe = request.SoDotVe,
@@ -220,13 +222,23 @@ public class ProductBatchesController : ControllerBase
                 {
                     pb.Id,
                     pb.BatchNumber,
-                        pb.Quantity,
+                    pb.BatchName,
+                    pb.Description,
+                    pb.Quantity,
+                    pb.RemainingQuantity,
+                    pb.InitialQuantity,
+                    pb.CurrentQuantity,
                         pb.UnitPrice,
                         pb.TotalValue,
-                    pb.ProductionDate,
-                    pb.ExpiryDate,
+                        pb.ProductionDate,
+                        pb.ExpiryDate,
                     pb.Status,
+                    pb.QualityStatus,
                     pb.Notes,
+                        pb.NgayVe,
+                        pb.SoDotVe,
+                        pb.SoXeContainerTungDot,
+                        pb.NgayVeDetails,
                     pb.CreatedAt,
                         pb.UpdatedAt,
                         ProductId = pb.ProductId,
@@ -237,11 +249,12 @@ public class ProductBatchesController : ControllerBase
                 })
                 .FirstOrDefaultAsync();
 
-                return CreatedAtAction(nameof(GetProductBatch), new { id = productBatch.Id }, createdBatch);
-        }
-        catch (Exception ex)
+                return Ok(new { success = true, data = createdBatch, message = "Tạo lô hàng thành công" });
+            }
+            catch (Exception ex)
             {
                 Console.WriteLine($"Error creating product batch: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 return StatusCode(500, new { 
                     success = false, 
                     message = "Lỗi khi tạo lô hàng", 
