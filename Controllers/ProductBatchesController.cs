@@ -17,6 +17,21 @@ public class ProductBatchesController : ControllerBase
         _context = context;
     }
 
+        // GET: api/productbatches/test
+        [HttpGet("test")]
+        [AllowAnonymous]
+        public IActionResult TestProductBatches()
+        {
+            return Ok(new { 
+                success = true, 
+                data = new List<object>(),
+                currentPage = 1,
+                totalPages = 1,
+                totalItems = 0,
+                message = "Test endpoint working"
+            });
+        }
+
         // GET: api/productbatches
         [HttpGet]
         [AllowAnonymous]
@@ -85,7 +100,8 @@ public class ProductBatchesController : ControllerBase
                     data = batches,
                     currentPage = 1,
                     totalPages = 1,
-                    totalItems = batches.Count
+                    totalItems = batches.Count,
+                    message = "Lấy danh sách lô hàng thành công"
                 });
             }
             catch (Exception ex)
