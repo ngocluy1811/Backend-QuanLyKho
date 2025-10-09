@@ -625,8 +625,6 @@ public async Task<IActionResult> CalculateExportPrices([FromBody] CalculateExpor
         }
     }
 
-    // POST: api/Products/calculate-export-prices
-    [HttpPost("calculate-export-prices")]
     public async Task<ActionResult<object>> CalculateExportPrices()
     {
         try
