@@ -249,9 +249,9 @@ using (var scope = app.Services.CreateScope())
         await SeedData.SeedSampleDataAsync(context);
         Log.Information("Sample data seeded successfully");
         
-        // Seed attendance data
-        await SeedData.SeedAttendanceDataAsync(context);
-        Log.Information("Attendance data seeded successfully");
+        // Seed attendance data - Temporarily disabled due to DateTime UTC issues
+        // await SeedData.SeedAttendanceDataAsync(context);
+        // Log.Information("Attendance data seeded successfully");
     }
     catch (Exception ex)
     {

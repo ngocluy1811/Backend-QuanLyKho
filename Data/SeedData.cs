@@ -268,7 +268,7 @@ namespace FertilizerWarehouseAPI.Data
 
             Console.WriteLine($"Seeding attendance data for {users.Count} users");
 
-            var today = DateTime.Today;
+            var today = DateTime.UtcNow.Date; // Use UTC date
 
             // Create only 3 days of data instead of 7
             for (int i = 0; i < 3; i++)
@@ -281,12 +281,12 @@ namespace FertilizerWarehouseAPI.Data
                         var record = new AttendanceRecord
                         {
                             UserId = user.Id,
-                            Date = date,
-                            CheckInTime = date.AddHours(8), // 8:00 AM
-                            CheckOutTime = date.AddHours(17), // 5:00 PM
+                            Date = DateTime.SpecifyKind(date, DateTimeKind.Utc),
+                            CheckInTime = DateTime.SpecifyKind(date.AddHours(8), DateTimeKind.Utc),
+                            CheckOutTime = DateTime.SpecifyKind(date.AddHours(17), DateTimeKind.Utc),
                             OvertimeHours = i % 2 == 0 ? 2.0m : 0.0m,
-                            OvertimeStartTime = i % 2 == 0 ? date.AddHours(17) : (DateTime?)null,
-                            OvertimeEndTime = i % 2 == 0 ? date.AddHours(19) : (DateTime?)null,
+                            OvertimeStartTime = i % 2 == 0 ? DateTime.SpecifyKind(date.AddHours(17), DateTimeKind.Utc) : (DateTime?)null,
+                            OvertimeEndTime = i % 2 == 0 ? DateTime.SpecifyKind(date.AddHours(19), DateTimeKind.Utc) : (DateTime?)null,
                             IsOvertimeRequired = i % 2 == 0,
                             Status = "present",
                             Notes = $"Attendance for {user.Username}",

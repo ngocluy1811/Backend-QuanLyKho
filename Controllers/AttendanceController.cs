@@ -270,7 +270,7 @@ namespace FertilizerWarehouseAPI.Controllers
 
                 Console.WriteLine($"Updating overtime status for UserId: {request.UserId}, IsOvertimeRequired: {request.IsOvertimeRequired}");
                 
-                var today = DateTime.Today;
+                var today = DateTime.UtcNow.Date;
                 var existingRecord = await _context.AttendanceRecords
                     .FirstOrDefaultAsync(a => a.UserId == request.UserId && a.Date.Date == today);
 
@@ -315,7 +315,7 @@ namespace FertilizerWarehouseAPI.Controllers
         {
             try
             {
-                var targetDate = date ?? DateTime.Today;
+                var targetDate = date ?? DateTime.UtcNow.Date;
                 Console.WriteLine($"Getting overtime status for date: {targetDate:yyyy-MM-dd}");
                 
                 var records = await _context.AttendanceRecords
