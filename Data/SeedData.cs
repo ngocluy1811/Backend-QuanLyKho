@@ -361,7 +361,7 @@ namespace FertilizerWarehouseAPI.Data
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
                     ProductCode = "NPK001",
-                    SupplierId = 2,
+                    SupplierId = null,
                     BatchNumber = "LO001",
                     ExpiryDate = DateTime.SpecifyKind(DateTime.Parse("2025-10-08"), DateTimeKind.Utc),
                     ProductionDate = DateTime.SpecifyKind(DateTime.Parse("2025-09-23"), DateTimeKind.Utc)
@@ -381,7 +381,7 @@ namespace FertilizerWarehouseAPI.Data
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
                     ProductCode = "NPK002",
-                    SupplierId = 3,
+                    SupplierId = null,
                     BatchNumber = "PNK3",
                     ExpiryDate = DateTime.SpecifyKind(DateTime.Parse("2026-02-28"), DateTimeKind.Utc),
                     ProductionDate = DateTime.SpecifyKind(DateTime.Parse("2025-09-01"), DateTimeKind.Utc)
@@ -401,7 +401,7 @@ namespace FertilizerWarehouseAPI.Data
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
                     ProductCode = "NPK003",
-                    SupplierId = 2,
+                    SupplierId = null,
                     BatchNumber = "LO002",
                     ExpiryDate = DateTime.SpecifyKind(DateTime.Parse("2025-10-09"), DateTimeKind.Utc),
                     ProductionDate = DateTime.SpecifyKind(DateTime.Parse("2025-09-27"), DateTimeKind.Utc)
