@@ -104,10 +104,10 @@ public class ProductBatchesController : ControllerBase
                     totalItems = batches.Count,
                     length = batches.Count,
                     message = "Lấy danh sách lô hàng thành công"
-                });
-            }
-            catch (Exception ex)
-            {
+            });
+        }
+        catch (Exception ex)
+        {
                 Console.WriteLine($"Error getting product batches: {ex.Message}");
                 Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 return StatusCode(500, new { 
@@ -192,15 +192,15 @@ public class ProductBatchesController : ControllerBase
                 ProductId = request.ProductId,
                     SupplierId = request.SupplierId,
                 Quantity = request.Quantity,
-                    RemainingQuantity = request.RemainingQuantity ?? request.Quantity,
-                    InitialQuantity = request.InitialQuantity ?? request.Quantity,
-                    CurrentQuantity = request.CurrentQuantity ?? request.Quantity,
+                RemainingQuantity = request.RemainingQuantity ?? request.Quantity,
+                InitialQuantity = request.InitialQuantity ?? request.Quantity,
+                CurrentQuantity = request.CurrentQuantity ?? request.Quantity,
                     UnitPrice = request.UnitPrice,
                     TotalValue = request.TotalValue,
                     ProductionDate = request.ProductionDate.HasValue ? DateTime.SpecifyKind(request.ProductionDate.Value, DateTimeKind.Utc) : null,
                     ExpiryDate = request.ExpiryDate.HasValue ? DateTime.SpecifyKind(request.ExpiryDate.Value, DateTimeKind.Utc) : null,
                 Status = request.Status ?? "Active",
-                    QualityStatus = request.QualityStatus ?? 1,
+                QualityStatus = request.QualityStatus ?? 1,
                 Notes = request.Notes,
                     NgayVe = request.NgayVe.HasValue ? DateTime.SpecifyKind(request.NgayVe.Value, DateTimeKind.Utc) : null,
                 SoDotVe = request.SoDotVe,
@@ -212,6 +212,9 @@ public class ProductBatchesController : ControllerBase
 
                 _context.ProductBatches.Add(productBatch);
             await _context.SaveChangesAsync();
+
+                // Tính số lượng hiện tại từ các phiếu nhập kho
+                await UpdateCurrentQuantityFromImportOrders(productBatch.Id);
 
             // Return the created batch with related data
             var createdBatch = await _context.ProductBatches
@@ -252,7 +255,7 @@ public class ProductBatchesController : ControllerBase
                 return Ok(new { success = true, data = createdBatch, message = "Tạo lô hàng thành công" });
         }
         catch (Exception ex)
-            {
+        {
                 Console.WriteLine($"Error creating product batch: {ex.Message}");
                 Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 return StatusCode(500, new { 
@@ -267,9 +270,9 @@ public class ProductBatchesController : ControllerBase
         [HttpGet("{id}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetProductBatch(int id)
+    {
+        try
         {
-            try
-            {
                 var batch = await _context.ProductBatches
                 .Include(pb => pb.Product)
                 .Include(pb => pb.Supplier)
@@ -296,14 +299,14 @@ public class ProductBatchesController : ControllerBase
                 .FirstOrDefaultAsync();
 
             if (batch == null)
-                {
+            {
                     return NotFound(new { success = false, message = "Không tìm thấy lô hàng" });
                 }
 
                 return Ok(new { success = true, data = batch });
-            }
-            catch (Exception ex)
-            {
+        }
+        catch (Exception ex)
+        {
                 Console.WriteLine($"Error getting product batch: {ex.Message}");
                 return StatusCode(500, new { 
                     success = false, 
@@ -312,7 +315,54 @@ public class ProductBatchesController : ControllerBase
                 });
             }
         }
-    }
+
+        // Helper method to update current quantity from import orders
+        private async Task UpdateCurrentQuantityFromImportOrders(int productBatchId)
+        {
+            try
+            {
+                // Tính tổng số lượng từ các phiếu nhập kho
+                var totalImportedQuantity = await _context.ImportOrderDetails
+                    .Where(iod => iod.ProductBatchId == productBatchId)
+                    .SumAsync(iod => iod.ReceivedQuantity ?? iod.Quantity);
+
+                // Cập nhật số lượng hiện tại
+                var productBatch = await _context.ProductBatches.FindAsync(productBatchId);
+                if (productBatch != null)
+                {
+                    productBatch.CurrentQuantity = (int)totalImportedQuantity;
+                    productBatch.RemainingQuantity = (int)totalImportedQuantity;
+                    await _context.SaveChangesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error updating current quantity: {ex.Message}");
+            }
+        }
+
+        // Public method to recalculate all batch quantities
+        [HttpPost("recalculate-quantities")]
+        [AllowAnonymous]
+        public async Task<IActionResult> RecalculateAllBatchQuantities()
+        {
+            try
+            {
+                var batches = await _context.ProductBatches.ToListAsync();
+                
+                foreach (var batch in batches)
+                {
+                    await UpdateCurrentQuantityFromImportOrders(batch.Id);
+                }
+
+                return Ok(new { success = true, message = "Đã cập nhật số lượng cho tất cả lô hàng" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "Lỗi khi cập nhật số lượng", error = ex.Message });
+            }
+        }
+}
 
 public class CreateProductBatchRequest
 {
