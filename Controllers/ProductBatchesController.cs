@@ -33,12 +33,12 @@ public class ProductBatchesController : ControllerBase
         }
 
         // GET: api/productbatches
-        [HttpGet]
+    [HttpGet]
         [AllowAnonymous]
         public async Task<IActionResult> GetProductBatches()
+    {
+        try
         {
-            try
-            {
                 Console.WriteLine("Getting product batches...");
                 
                 // Check if ProductBatches table exists and has data
@@ -54,7 +54,8 @@ public class ProductBatchesController : ControllerBase
                         data = new List<object>(),
                         currentPage = 1,
                         totalPages = 1,
-                        totalItems = 0
+                        totalItems = 0,
+                        length = 0
                     });
                 }
 
@@ -101,6 +102,7 @@ public class ProductBatchesController : ControllerBase
                     currentPage = 1,
                     totalPages = 1,
                     totalItems = batches.Count,
+                    length = batches.Count,
                     message = "Lấy danh sách lô hàng thành công"
                 });
             }
@@ -153,11 +155,11 @@ public class ProductBatchesController : ControllerBase
             }
 
                 var productBatch = new ProductBatch
-                {
-                    BatchNumber = request.BatchNumber,
-                    BatchName = request.BatchName,
-                    Description = request.Description,
-                    ProductId = request.ProductId,
+            {
+                BatchNumber = request.BatchNumber,
+                BatchName = request.BatchName,
+                Description = request.Description,
+                ProductId = request.ProductId,
                     SupplierId = request.SupplierId,
                     Quantity = request.Quantity,
                     RemainingQuantity = request.RemainingQuantity,
@@ -165,14 +167,14 @@ public class ProductBatchesController : ControllerBase
                     CurrentQuantity = request.CurrentQuantity,
                     UnitPrice = request.UnitPrice,
                     TotalValue = request.TotalValue,
-                    ProductionDate = request.ProductionDate,
-                    ExpiryDate = request.ExpiryDate,
+                ProductionDate = request.ProductionDate,
+                ExpiryDate = request.ExpiryDate,
                     Status = request.Status,
                     QualityStatus = request.QualityStatus,
-                    Notes = request.Notes,
-                    NgayVe = request.NgayVe,
-                    SoDotVe = request.SoDotVe,
-                    SoXeContainerTungDot = request.SoXeContainerTungDot,
+                Notes = request.Notes,
+                NgayVe = request.NgayVe,
+                SoDotVe = request.SoDotVe,
+                SoXeContainerTungDot = request.SoXeContainerTungDot,
                     NgayVeDetails = request.NgayVeDetails,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
