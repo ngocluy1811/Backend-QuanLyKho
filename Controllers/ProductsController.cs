@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 using FertilizerWarehouseAPI.Data;
 using FertilizerWarehouseAPI.Models.Entities;
+using FertilizerWarehouseAPI.DTOs;
 using System.Linq;
 
 namespace FertilizerWarehouseAPI.Controllers;
