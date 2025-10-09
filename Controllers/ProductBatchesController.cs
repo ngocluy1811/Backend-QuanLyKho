@@ -47,7 +47,13 @@ namespace FertilizerWarehouseAPI.Controllers
                     .OrderByDescending(pb => pb.CreatedAt)
                     .ToListAsync();
 
-                return Ok(new { success = true, data = batches });
+                return Ok(new { 
+                    success = true, 
+                    data = batches,
+                    currentPage = 1,
+                    totalPages = 1,
+                    totalItems = batches.Count
+                });
             }
             catch (Exception ex)
             {
