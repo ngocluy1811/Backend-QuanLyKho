@@ -1,4 +1,5 @@
 using FertilizerWarehouseAPI.Models.Entities;
+using FertilizerWarehouseAPI.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 
