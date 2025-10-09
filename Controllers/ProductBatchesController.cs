@@ -122,19 +122,29 @@ public class ProductBatchesController : ControllerBase
         [HttpPost]
         [AllowAnonymous]
         public async Task<IActionResult> CreateProductBatch([FromBody] CreateProductBatchRequest request)
-    {
-        try
         {
+            try
+            {
+                Console.WriteLine("=== CreateProductBatch called ===");
+                Console.WriteLine($"Request is null: {request == null}");
+                
                 if (request == null)
                 {
+                    Console.WriteLine("Request is null, returning BadRequest");
                     return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ" });
                 }
 
-            // Validate required fields
+                Console.WriteLine($"BatchNumber: '{request.BatchNumber}'");
+                Console.WriteLine($"ProductId: {request.ProductId}");
+                Console.WriteLine($"BatchName: '{request.BatchName}'");
+                Console.WriteLine($"Quantity: {request.Quantity}");
+
+                // Validate required fields
                 if (string.IsNullOrEmpty(request.BatchNumber) || request.ProductId <= 0)
-            {
+                {
+                    Console.WriteLine("Validation failed: BatchNumber or ProductId is invalid");
                     return BadRequest(new { success = false, message = "BatchNumber và ProductId là bắt buộc" });
-            }
+                }
 
             // Check if batch number already exists
             var existingBatch = await _context.ProductBatches
