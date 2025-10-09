@@ -140,10 +140,28 @@ public class ProductBatchesController : ControllerBase
                 Console.WriteLine($"Quantity: {request.Quantity}");
 
                 // Validate required fields
-                if (string.IsNullOrEmpty(request.BatchNumber) || request.ProductId <= 0)
+                if (string.IsNullOrEmpty(request.BatchNumber))
                 {
-                    Console.WriteLine("Validation failed: BatchNumber or ProductId is invalid");
-                    return BadRequest(new { success = false, message = "BatchNumber và ProductId là bắt buộc" });
+                    Console.WriteLine("Validation failed: BatchNumber is empty");
+                    return BadRequest(new { success = false, message = "Mã lô hàng là bắt buộc" });
+                }
+                
+                if (request.ProductId <= 0)
+                {
+                    Console.WriteLine("Validation failed: ProductId is invalid");
+                    return BadRequest(new { success = false, message = "Vui lòng chọn sản phẩm" });
+                }
+                
+                if (string.IsNullOrEmpty(request.BatchName))
+                {
+                    Console.WriteLine("Validation failed: BatchName is empty");
+                    return BadRequest(new { success = false, message = "Tên lô hàng là bắt buộc" });
+                }
+                
+                if (request.Quantity <= 0)
+                {
+                    Console.WriteLine("Validation failed: Quantity is invalid");
+                    return BadRequest(new { success = false, message = "Số lượng phải lớn hơn 0" });
                 }
 
             // Check if batch number already exists
