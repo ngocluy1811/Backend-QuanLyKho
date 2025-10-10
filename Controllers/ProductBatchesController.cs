@@ -372,26 +372,50 @@ public class ProductBatchesController : ControllerBase
 
         // Helper method to update current quantity from import orders
         private async System.Threading.Tasks.Task UpdateCurrentQuantityFromImportOrders(int productBatchId)
-    {
-        try
         {
-                // Tính tổng số lượng từ các phiếu nhập kho
-                var totalImportedQuantity = await _context.ImportOrderDetails
+            try
+            {
+                Console.WriteLine($"=== UpdateCurrentQuantityFromImportOrders for ProductBatchId: {productBatchId} ===");
+                
+                // Lấy thông tin ProductBatch trước
+                var productBatch = await _context.ProductBatches.FindAsync(productBatchId);
+                if (productBatch == null)
+                {
+                    Console.WriteLine($"ProductBatch {productBatchId} not found!");
+                    return;
+                }
+                
+                Console.WriteLine($"ProductBatch: {productBatch.BatchNumber}, Current: {productBatch.CurrentQuantity}, Remaining: {productBatch.RemainingQuantity}");
+                
+                // Lấy tất cả ImportOrderDetails cho ProductBatchId này
+                var importOrderDetails = await _context.ImportOrderDetails
                     .Where(iod => iod.ProductBatchId == productBatchId)
-                    .SumAsync(iod => iod.ReceivedQuantity ?? iod.Quantity);
+                    .ToListAsync();
+                
+                Console.WriteLine($"Found {importOrderDetails.Count} ImportOrderDetails for ProductBatchId {productBatchId}");
+                
+                foreach (var detail in importOrderDetails)
+                {
+                    Console.WriteLine($"  - ImportOrderId: {detail.ImportOrderId}, Quantity: {detail.Quantity}, ReceivedQuantity: {detail.ReceivedQuantity}, BatchNumber: {detail.BatchNumber}");
+                }
+                
+                // Tính tổng số lượng từ các phiếu nhập kho
+                var totalImportedQuantity = importOrderDetails.Sum(iod => iod.ReceivedQuantity ?? iod.Quantity);
+                Console.WriteLine($"TotalImportedQuantity: {totalImportedQuantity}");
 
                 // Cập nhật số lượng hiện tại
-                var productBatch = await _context.ProductBatches.FindAsync(productBatchId);
-                if (productBatch != null)
-                {
-                    productBatch.CurrentQuantity = (int)totalImportedQuantity;
-                    productBatch.RemainingQuantity = (int)totalImportedQuantity;
-                    await _context.SaveChangesAsync();
-                }
-        }
-        catch (Exception ex)
-        {
+                productBatch.CurrentQuantity = (int)totalImportedQuantity;
+                productBatch.RemainingQuantity = (int)totalImportedQuantity;
+                
+                Console.WriteLine($"Updated ProductBatch - CurrentQuantity: {productBatch.CurrentQuantity}, RemainingQuantity: {productBatch.RemainingQuantity}");
+                
+                await _context.SaveChangesAsync();
+                Console.WriteLine("SaveChanges completed successfully");
+            }
+            catch (Exception ex)
+            {
                 Console.WriteLine($"Error updating current quantity: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
             }
         }
 
@@ -471,20 +495,24 @@ public class ProductBatchesController : ControllerBase
         {
             try
             {
+                Console.WriteLine("=== Recalculating ALL batch quantities ===");
                 var batches = await _context.ProductBatches.ToListAsync();
+                Console.WriteLine($"Found {batches.Count} ProductBatches to recalculate");
                 
                 foreach (var batch in batches)
                 {
+                    Console.WriteLine($"Recalculating batch {batch.Id} ({batch.BatchNumber})");
                     await UpdateCurrentQuantityFromImportOrders(batch.Id);
                 }
 
                 return Ok(new { success = true, message = "Đã cập nhật số lượng cho tất cả lô hàng" });
-        }
-        catch (Exception ex)
-        {
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error recalculating all batches: {ex.Message}");
                 return StatusCode(500, new { success = false, message = "Lỗi khi cập nhật số lượng", error = ex.Message });
+            }
         }
-    }
 }
 
 public class CreateProductBatchRequest
