@@ -236,10 +236,23 @@ public class ImportOrdersController : ControllerBase
     {
         try
         {
-            // Log request for debugging (removed to avoid console spam)
+            Console.WriteLine($"=== CreateImportOrder called ===");
+            Console.WriteLine($"Request is null: {request == null}");
+            
+            if (request == null)
+            {
+                Console.WriteLine("Request is null, returning BadRequest");
+                return BadRequest(new { message = "Request body cannot be null" });
+            }
+            
+            Console.WriteLine($"OrderName: '{request.OrderName}'");
+            Console.WriteLine($"WarehouseId: {request.WarehouseId}");
+            Console.WriteLine($"Details count: {request.Details?.Count ?? 0}");
+            
             // Validation
             if (request.WarehouseId <= 0)
             {
+                Console.WriteLine("Validation failed: WarehouseId is required");
                 return BadRequest(new { message = "WarehouseId is required" });
             }
 
@@ -306,15 +319,21 @@ public class ImportOrdersController : ControllerBase
             // Add order details
             if (request.Details != null && request.Details.Any())
             {
+                Console.WriteLine($"Processing {request.Details.Count} details...");
                 try
                 {
                     foreach (var detail in request.Details)
-                {
-                    // Validate detail
-                    if (detail.ProductId <= 0)
                     {
-                        return BadRequest(new { message = "ProductId is required for all details" });
-                    }
+                        try
+                        {
+                            Console.WriteLine($"Processing detail - ProductId: {detail.ProductId}, WarehouseCellId: {detail.WarehouseCellId}, Quantity: {detail.Quantity}");
+                            
+                            // Validate detail
+                            if (detail.ProductId <= 0)
+                            {
+                                Console.WriteLine($"Validation failed: ProductId is required for detail");
+                                return BadRequest(new { message = "ProductId is required for all details" });
+                            }
 
                     if (detail.WarehouseCellId <= 0)
                     {
@@ -722,10 +741,19 @@ public class ImportOrdersController : ControllerBase
                     {
                         // Continue without activity if it fails - don't throw exception
                     }
-                }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error processing detail: {ex.Message}");
+                            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                            // Continue with next detail
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
+                    Console.WriteLine($"Error processing details: {ex.Message}");
+                    Console.WriteLine($"Stack trace: {ex.StackTrace}");
                     // Continue without details if it fails
                 }
 
