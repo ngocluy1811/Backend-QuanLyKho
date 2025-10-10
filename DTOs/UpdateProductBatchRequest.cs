@@ -12,8 +12,8 @@ namespace FertilizerWarehouseAPI.DTOs
         public int? QualityStatus { get; set; }
         public string? Notes { get; set; }
         public DateTime? NgayVe { get; set; }
-        public string? SoDotVe { get; set; }
-        public string? SoXeContainerTungDot { get; set; }
+        public int? SoDotVe { get; set; }
+        public int? SoXeContainerTungDot { get; set; }
         public string? NgayVeDetails { get; set; }
     }
 }
