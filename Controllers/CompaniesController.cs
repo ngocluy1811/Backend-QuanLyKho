@@ -248,6 +248,7 @@ public class CompaniesController : ControllerBase
     public class CreateCompanyRequest
     {
         public string CompanyName { get; set; } = string.Empty;
+        public string? Code { get; set; }
         public string? Address { get; set; }
         public string? Phone { get; set; }
         public string? Email { get; set; }
@@ -258,6 +259,7 @@ public class CompaniesController : ControllerBase
     public class UpdateCompanyRequest
     {
         public string CompanyName { get; set; } = string.Empty;
+        public string? Code { get; set; }
         public string? Address { get; set; }
         public string? Phone { get; set; }
         public string? Email { get; set; }
