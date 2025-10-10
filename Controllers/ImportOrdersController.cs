@@ -28,7 +28,7 @@ public class ImportOrdersController : ControllerBase
                 // Calculate actual quantity based on import orders
                 var totalImportedQuantity = await _context.ImportOrderDetails
                     .Where(iod => iod.ProductBatchId == productBatchId)
-                    .SumAsync(iod => iod.Quantity);
+                    .SumAsync(iod => iod.ReceivedQuantity ?? iod.Quantity);
                 
                 // Calculate total exported quantity from warehouse activities
                 var totalExportedQuantity = await _context.WarehouseActivities
@@ -44,8 +44,15 @@ public class ImportOrdersController : ControllerBase
                 var calculatedQuantity = (int)(totalImportedQuantity - totalExportedQuantity - totalClearedQuantity);
                 if (calculatedQuantity < 0) calculatedQuantity = 0;
                 
+                Console.WriteLine($"Recalculating ProductBatch {productBatchId}:");
+                Console.WriteLine($"  - TotalImported: {totalImportedQuantity}");
+                Console.WriteLine($"  - TotalExported: {totalExportedQuantity}");
+                Console.WriteLine($"  - TotalCleared: {totalClearedQuantity}");
+                Console.WriteLine($"  - CalculatedQuantity: {calculatedQuantity}");
+                
                 // Only update CurrentQuantity, keep original Quantity unchanged
                 productBatch.CurrentQuantity = calculatedQuantity;
+                productBatch.RemainingQuantity = calculatedQuantity;
                 productBatch.UpdatedAt = DateTime.UtcNow;
                 
                         // Log the calculation (removed to avoid console spam)
