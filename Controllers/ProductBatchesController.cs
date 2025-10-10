@@ -63,47 +63,57 @@ public class ProductBatchesController : ControllerBase
                 var batches = await _context.ProductBatches
                 .Include(pb => pb.Product)
                 .Include(pb => pb.Supplier)
-                .Select(pb => new
+                .ToListAsync();
+
+                var batchesWithWarehouseStock = new List<object>();
+                
+                foreach (var pb in batches)
                 {
-                    pb.Id,
-                    pb.BatchNumber,
-                    pb.BatchName,
-                    pb.Description,
-                    pb.Quantity,
-                    pb.RemainingQuantity,
-                    pb.InitialQuantity,
-                    pb.CurrentQuantity,
+                    // Calculate actual warehouse stock from ImportOrderDetails
+                    var currentQuantity = await _context.ImportOrderDetails
+                        .Where(iod => iod.BatchNumber == pb.BatchNumber)
+                        .SumAsync(iod => iod.ReceivedQuantity ?? iod.Quantity);
+                    
+                    batchesWithWarehouseStock.Add(new
+                    {
+                        pb.Id,
+                        pb.BatchNumber,
+                        pb.BatchName,
+                        pb.Description,
+                        pb.Quantity,
+                        pb.RemainingQuantity,
+                        pb.InitialQuantity,
+                        CurrentQuantity = currentQuantity,
                         pb.UnitPrice,
                         pb.TotalValue,
                         pb.ProductionDate,
                         pb.ExpiryDate,
-                    pb.Status,
-                    pb.QualityStatus,
+                        pb.Status,
+                        pb.QualityStatus,
                         pb.Notes,
-                    pb.NgayVe,
-                    pb.SoDotVe,
-                    pb.SoXeContainerTungDot,
+                        pb.NgayVe,
+                        pb.SoDotVe,
+                        pb.SoXeContainerTungDot,
                         pb.NgayVeDetails,
-                    pb.CreatedAt,
+                        pb.CreatedAt,
                         pb.UpdatedAt,
                         ProductId = pb.ProductId,
                         ProductName = pb.Product != null ? pb.Product.ProductName : "N/A",
                         ProductCode = pb.Product != null ? pb.Product.ProductCode : "N/A",
                         SupplierId = pb.SupplierId,
                         SupplierName = pb.Supplier != null ? pb.Supplier.SupplierName : "N/A"
-                    })
-                    .OrderByDescending(pb => pb.CreatedAt)
-                .ToListAsync();
+                    });
+                }
 
-                Console.WriteLine($"Found {batches.Count} product batches");
+                Console.WriteLine($"Found {batchesWithWarehouseStock.Count} product batches");
 
                 return Ok(new { 
                     success = true, 
-                    data = batches,
+                    data = batchesWithWarehouseStock,
                     currentPage = 1,
                     totalPages = 1,
-                    totalItems = batches.Count,
-                    length = batches.Count,
+                    totalItems = batchesWithWarehouseStock.Count,
+                    length = batchesWithWarehouseStock.Count,
                     message = "Lấy danh sách lô hàng thành công"
             });
         }
