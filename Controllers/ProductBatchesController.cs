@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using FertilizerWarehouseAPI.Data;
 using FertilizerWarehouseAPI.Models.Entities;
+using FertilizerWarehouseAPI.DTOs;
 
 namespace FertilizerWarehouseAPI.Controllers
 {
@@ -316,11 +317,64 @@ public class ProductBatchesController : ControllerBase
             }
         }
 
+        // Update ProductBatch
+        [HttpPut("{id}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> UpdateProductBatch(int id, UpdateProductBatchRequest request)
+    {
+        try
+        {
+                var productBatch = await _context.ProductBatches.FindAsync(id);
+                if (productBatch == null)
+                {
+                    return NotFound(new { success = false, message = "Không tìm thấy lô hàng" });
+                }
+
+                // Update fields
+                productBatch.BatchName = request.BatchName ?? productBatch.BatchName;
+                productBatch.Description = request.Description ?? productBatch.Description;
+                productBatch.Status = request.Status ?? productBatch.Status;
+                productBatch.QualityStatus = request.QualityStatus ?? productBatch.QualityStatus;
+                productBatch.Notes = request.Notes ?? productBatch.Notes;
+                productBatch.SoDotVe = request.SoDotVe ?? productBatch.SoDotVe;
+                productBatch.SoXeContainerTungDot = request.SoXeContainerTungDot ?? productBatch.SoXeContainerTungDot;
+                productBatch.NgayVeDetails = request.NgayVeDetails ?? productBatch.NgayVeDetails;
+
+                if (request.ProductionDate.HasValue)
+                {
+                    productBatch.ProductionDate = DateTime.SpecifyKind(request.ProductionDate.Value, DateTimeKind.Utc);
+                }
+                if (request.ExpiryDate.HasValue)
+                {
+                    productBatch.ExpiryDate = DateTime.SpecifyKind(request.ExpiryDate.Value, DateTimeKind.Utc);
+                }
+                if (request.NgayVe.HasValue)
+                {
+                    productBatch.NgayVe = DateTime.SpecifyKind(request.NgayVe.Value, DateTimeKind.Utc);
+                }
+
+                productBatch.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+                return Ok(new { success = true, message = "Cập nhật lô hàng thành công" });
+        }
+        catch (Exception ex)
+        {
+                Console.WriteLine($"Error updating product batch: {ex.Message}");
+                return StatusCode(500, new { 
+                    success = false, 
+                    message = "Lỗi khi cập nhật lô hàng", 
+                    error = ex.Message 
+                });
+            }
+        }
+
         // Helper method to update current quantity from import orders
         private async System.Threading.Tasks.Task UpdateCurrentQuantityFromImportOrders(int productBatchId)
+    {
+        try
         {
-            try
-            {
                 // Tính tổng số lượng từ các phiếu nhập kho
                 var totalImportedQuantity = await _context.ImportOrderDetails
                     .Where(iod => iod.ProductBatchId == productBatchId)
@@ -334,9 +388,9 @@ public class ProductBatchesController : ControllerBase
                     productBatch.RemainingQuantity = (int)totalImportedQuantity;
                     await _context.SaveChangesAsync();
                 }
-            }
-            catch (Exception ex)
-            {
+        }
+        catch (Exception ex)
+        {
                 Console.WriteLine($"Error updating current quantity: {ex.Message}");
             }
         }
@@ -345,9 +399,9 @@ public class ProductBatchesController : ControllerBase
         [HttpGet("debug-batch/{batchId}")]
         [AllowAnonymous]
         public async Task<IActionResult> DebugBatch(int batchId)
+    {
+        try
         {
-            try
-            {
                 var productBatch = await _context.ProductBatches.FindAsync(batchId);
                 if (productBatch == null)
                 {
@@ -425,12 +479,12 @@ public class ProductBatchesController : ControllerBase
                 }
 
                 return Ok(new { success = true, message = "Đã cập nhật số lượng cho tất cả lô hàng" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi khi cập nhật số lượng", error = ex.Message });
-            }
         }
+        catch (Exception ex)
+        {
+                return StatusCode(500, new { success = false, message = "Lỗi khi cập nhật số lượng", error = ex.Message });
+        }
+    }
 }
 
 public class CreateProductBatchRequest
