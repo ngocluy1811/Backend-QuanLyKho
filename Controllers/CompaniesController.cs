@@ -6,25 +6,25 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace FertilizerWarehouseAPI.Controllers
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class CompaniesController : ControllerBase
-    {
-        private readonly ApplicationDbContext _context;
+[ApiController]
+[Route("api/[controller]")]
+public class CompaniesController : ControllerBase
+{
+    private readonly ApplicationDbContext _context;
 
-        public CompaniesController(ApplicationDbContext context)
-        {
-            _context = context;
-        }
+    public CompaniesController(ApplicationDbContext context)
+    {
+        _context = context;
+    }
 
         // GET: api/companies
-        [HttpGet]
+    [HttpGet]
         [AllowAnonymous]
         public async Task<IActionResult> GetCompanies()
+    {
+        try
         {
-            try
-            {
-                var companies = await _context.Companies
+            var companies = await _context.Companies
                     .OrderBy(c => c.CompanyName)
                     .ToListAsync();
 
@@ -114,7 +114,6 @@ namespace FertilizerWarehouseAPI.Controllers
                     Phone = request.Phone,
                     Email = request.Email,
                     TaxCode = request.TaxCode,
-                    Description = request.Description,
                     IsActive = request.IsActive ?? true,
                     CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc),
                     UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc)
@@ -179,7 +178,6 @@ namespace FertilizerWarehouseAPI.Controllers
                 company.Phone = request.Phone;
                 company.Email = request.Email;
                 company.TaxCode = request.TaxCode;
-                company.Description = request.Description;
                 company.IsActive = request.IsActive ?? company.IsActive;
                 company.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
 
@@ -190,8 +188,8 @@ namespace FertilizerWarehouseAPI.Controllers
                     data = company,
                     message = "Cập nhật công ty thành công"
                 });
-            }
-            catch (Exception ex)
+        }
+        catch (Exception ex)
             {
                 Console.WriteLine($"Error updating company: {ex.Message}");
                 Console.WriteLine($"Stack trace: {ex.StackTrace}");
@@ -252,7 +250,6 @@ namespace FertilizerWarehouseAPI.Controllers
         public string? Phone { get; set; }
         public string? Email { get; set; }
         public string? TaxCode { get; set; }
-        public string? Description { get; set; }
         public bool? IsActive { get; set; }
     }
 
@@ -263,7 +260,6 @@ namespace FertilizerWarehouseAPI.Controllers
         public string? Phone { get; set; }
         public string? Email { get; set; }
         public string? TaxCode { get; set; }
-        public string? Description { get; set; }
         public bool? IsActive { get; set; }
     }
 }
