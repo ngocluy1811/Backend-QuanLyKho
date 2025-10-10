@@ -774,6 +774,30 @@ public class ImportOrdersController : ControllerBase
                 order.TotalValue = calculatedTotalValue;
 
                 await _context.SaveChangesAsync();
+                
+                // Recalculate ProductBatch quantities for all batches used in this import order
+                if (request.Details != null)
+                {
+                    var uniqueProductBatchIds = request.Details
+                        .Where(d => d.ProductBatchId.HasValue)
+                        .Select(d => d.ProductBatchId.Value)
+                        .Distinct()
+                        .ToList();
+                    
+                    Console.WriteLine($"Recalculating quantities for {uniqueProductBatchIds.Count} product batches...");
+                    foreach (var batchId in uniqueProductBatchIds)
+                    {
+                        try
+                        {
+                            await RecalculateProductBatchQuantity(batchId);
+                            Console.WriteLine($"Recalculated ProductBatch {batchId}");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error recalculating ProductBatch {batchId}: {ex.Message}");
+                        }
+                    }
+                }
             }
 
             return CreatedAtAction(nameof(GetImportOrder), new { id = order.Id }, new { 
