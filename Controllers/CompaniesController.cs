@@ -110,6 +110,7 @@ public class CompaniesController : ControllerBase
                 var company = new Company
                 {
                     CompanyName = request.CompanyName,
+                    Code = request.Code,
                     Address = request.Address,
                     Phone = request.Phone,
                     Email = request.Email,
@@ -174,6 +175,7 @@ public class CompaniesController : ControllerBase
 
                 // Update company properties
                 company.CompanyName = request.CompanyName;
+                company.Code = request.Code;
                 company.Address = request.Address;
                 company.Phone = request.Phone;
                 company.Email = request.Email;
