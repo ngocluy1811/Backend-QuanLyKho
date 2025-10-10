@@ -423,16 +423,36 @@ public class ProductBatchesController : ControllerBase
         [HttpGet("debug-batch/{batchId}")]
         [AllowAnonymous]
         public async Task<IActionResult> DebugBatch(int batchId)
-    {
-        try
         {
+            try
+            {
                 var productBatch = await _context.ProductBatches.FindAsync(batchId);
                 if (productBatch == null)
                 {
                     return NotFound(new { message = "ProductBatch not found" });
                 }
 
-                var importOrderDetails = await _context.ImportOrderDetails
+                // Debug: Get all ImportOrderDetails by BatchNumber (not ProductBatchId)
+                var importOrderDetailsByBatchNumber = await _context.ImportOrderDetails
+                    .Where(iod => iod.BatchNumber == productBatch.BatchNumber)
+                    .Select(iod => new {
+                        iod.Id,
+                        iod.ImportOrderId,
+                        iod.ProductId,
+                        iod.ProductBatchId,
+                        iod.Quantity,
+                        iod.ReceivedQuantity,
+                        iod.BatchNumber,
+                        ImportOrder = new {
+                            iod.ImportOrder.OrderNumber,
+                            iod.ImportOrder.OrderName,
+                            iod.ImportOrder.OrderDate
+                        }
+                    })
+                    .ToListAsync();
+
+                // Debug: Get all ImportOrderDetails by ProductBatchId (old logic)
+                var importOrderDetailsByProductBatchId = await _context.ImportOrderDetails
                     .Where(iod => iod.ProductBatchId == batchId)
                     .Select(iod => new {
                         iod.Id,
@@ -450,7 +470,8 @@ public class ProductBatchesController : ControllerBase
                     })
                     .ToListAsync();
 
-                var totalImported = importOrderDetails.Sum(iod => iod.ReceivedQuantity ?? iod.Quantity);
+                var totalImportedByBatchNumber = importOrderDetailsByBatchNumber.Sum(iod => iod.ReceivedQuantity ?? iod.Quantity);
+                var totalImportedByProductBatchId = importOrderDetailsByProductBatchId.Sum(iod => iod.ReceivedQuantity ?? iod.Quantity);
 
                 return Ok(new {
                     ProductBatch = new {
@@ -461,9 +482,16 @@ public class ProductBatchesController : ControllerBase
                         productBatch.CurrentQuantity,
                         productBatch.RemainingQuantity
                     },
-                    ImportOrderDetails = importOrderDetails,
-                    TotalImported = totalImported,
-                    Count = importOrderDetails.Count
+                    ImportOrderDetailsByBatchNumber = new {
+                        Details = importOrderDetailsByBatchNumber,
+                        TotalImported = totalImportedByBatchNumber,
+                        Count = importOrderDetailsByBatchNumber.Count
+                    },
+                    ImportOrderDetailsByProductBatchId = new {
+                        Details = importOrderDetailsByProductBatchId,
+                        TotalImported = totalImportedByProductBatchId,
+                        Count = importOrderDetailsByProductBatchId.Count
+                    }
                 });
             }
             catch (Exception ex)
