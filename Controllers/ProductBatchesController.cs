@@ -341,6 +341,75 @@ public class ProductBatchesController : ControllerBase
             }
         }
 
+        // Debug endpoint to check ProductBatch data
+        [HttpGet("debug-batch/{batchId}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> DebugBatch(int batchId)
+        {
+            try
+            {
+                var productBatch = await _context.ProductBatches.FindAsync(batchId);
+                if (productBatch == null)
+                {
+                    return NotFound(new { message = "ProductBatch not found" });
+                }
+
+                var importOrderDetails = await _context.ImportOrderDetails
+                    .Where(iod => iod.ProductBatchId == batchId)
+                    .Select(iod => new {
+                        iod.Id,
+                        iod.ImportOrderId,
+                        iod.ProductId,
+                        iod.ProductBatchId,
+                        iod.Quantity,
+                        iod.ReceivedQuantity,
+                        iod.BatchNumber,
+                        ImportOrder = new {
+                            iod.ImportOrder.OrderNumber,
+                            iod.ImportOrder.OrderName,
+                            iod.ImportOrder.OrderDate
+                        }
+                    })
+                    .ToListAsync();
+
+                var totalImported = importOrderDetails.Sum(iod => iod.ReceivedQuantity ?? iod.Quantity);
+
+                return Ok(new {
+                    ProductBatch = new {
+                        productBatch.Id,
+                        productBatch.BatchNumber,
+                        productBatch.BatchName,
+                        productBatch.Quantity,
+                        productBatch.CurrentQuantity,
+                        productBatch.RemainingQuantity
+                    },
+                    ImportOrderDetails = importOrderDetails,
+                    TotalImported = totalImported,
+                    Count = importOrderDetails.Count
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message, stackTrace = ex.StackTrace });
+            }
+        }
+
+        // Force recalculate a specific batch
+        [HttpPost("recalculate-batch/{batchId}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> RecalculateBatch(int batchId)
+        {
+            try
+            {
+                await UpdateCurrentQuantityFromImportOrders(batchId);
+                return Ok(new { success = true, message = $"Đã cập nhật số lượng cho lô hàng {batchId}" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
         // Public method to recalculate all batch quantities
         [HttpPost("recalculate-quantities")]
         [AllowAnonymous]
