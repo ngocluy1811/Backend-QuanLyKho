@@ -278,7 +278,7 @@ public class ImportOrdersController : ControllerBase
             {
                 OrderNumber = orderNumber,
                 OrderName = request.OrderName,
-                OrderDate = request.OrderDate.HasValue ? DateTime.SpecifyKind(request.OrderDate.Value, DateTimeKind.Utc) : DateTime.UtcNow,
+                OrderDate = request.OrderDate != default(DateTime) ? DateTime.SpecifyKind(request.OrderDate, DateTimeKind.Utc) : DateTime.UtcNow,
                 ExpectedDeliveryDate = request.ExpectedDeliveryDate.HasValue ? DateTime.SpecifyKind(request.ExpectedDeliveryDate.Value, DateTimeKind.Utc) : null,
                 ActualDeliveryDate = request.ActualDeliveryDate.HasValue ? DateTime.SpecifyKind(request.ActualDeliveryDate.Value, DateTimeKind.Utc) : null,
                 WarehouseId = request.WarehouseId,
