@@ -278,9 +278,9 @@ public class ImportOrdersController : ControllerBase
             {
                 OrderNumber = orderNumber,
                 OrderName = request.OrderName,
-                OrderDate = request.OrderDate,
-                ExpectedDeliveryDate = request.ExpectedDeliveryDate,
-                ActualDeliveryDate = request.ActualDeliveryDate,
+                OrderDate = request.OrderDate.HasValue ? DateTime.SpecifyKind(request.OrderDate.Value, DateTimeKind.Utc) : DateTime.UtcNow,
+                ExpectedDeliveryDate = request.ExpectedDeliveryDate.HasValue ? DateTime.SpecifyKind(request.ExpectedDeliveryDate.Value, DateTimeKind.Utc) : null,
+                ActualDeliveryDate = request.ActualDeliveryDate.HasValue ? DateTime.SpecifyKind(request.ActualDeliveryDate.Value, DateTimeKind.Utc) : null,
                 WarehouseId = request.WarehouseId,
                 SupplierId = request.SupplierId,
                 CustomerId = request.CustomerId,
@@ -303,7 +303,7 @@ public class ImportOrdersController : ControllerBase
                 Discount = request.Discount,
                 PaymentMethod = request.PaymentMethod,
                 ReceiptCode = request.ReceiptCode,
-                ImportDate = request.ImportDate,
+                ImportDate = request.ImportDate.HasValue ? DateTime.SpecifyKind(request.ImportDate.Value, DateTimeKind.Utc) : null,
                 Notes = request.Notes,
                 CreatedBy = request.CreatedBy,
                 VoucherCode = request.VoucherCode,
@@ -382,11 +382,11 @@ public class ImportOrdersController : ControllerBase
                         RemainingQuantity = detail.RemainingQuantity ?? detail.Quantity,
                         TotalPrice = detail.TotalPrice,
                         BatchNumber = detail.BatchNumber,
-                        ProductionDate = detail.ProductionDate,
-                        ExpiryDate = detail.ExpiryDate,
+                        ProductionDate = detail.ProductionDate.HasValue ? DateTime.SpecifyKind(detail.ProductionDate.Value, DateTimeKind.Utc) : null,
+                        ExpiryDate = detail.ExpiryDate.HasValue ? DateTime.SpecifyKind(detail.ExpiryDate.Value, DateTimeKind.Utc) : null,
                         Supplier = detail.Supplier,
                         Unit = detail.Unit ?? "kg",
-                        ArrivalDate = detail.ArrivalDate,
+                        ArrivalDate = detail.ArrivalDate.HasValue ? DateTime.SpecifyKind(detail.ArrivalDate.Value, DateTimeKind.Utc) : null,
                         ArrivalBatchNumber = detail.ArrivalBatchNumber,
                         ContainerVehicleNumber = detail.ContainerVehicleNumber,
                         Notes = detail.Notes,
@@ -420,8 +420,8 @@ public class ImportOrdersController : ControllerBase
                         warehouseCell.ProductId = detail.ProductId;
                         warehouseCell.ProductName = product.ProductName;
                         warehouseCell.BatchNumber = detail.BatchNumber;
-                        warehouseCell.ProductionDate = detail.ProductionDate;
-                        warehouseCell.ExpiryDate = detail.ExpiryDate;
+                        warehouseCell.ProductionDate = detail.ProductionDate.HasValue ? DateTime.SpecifyKind(detail.ProductionDate.Value, DateTimeKind.Utc) : null;
+                        warehouseCell.ExpiryDate = detail.ExpiryDate.HasValue ? DateTime.SpecifyKind(detail.ExpiryDate.Value, DateTimeKind.Utc) : null;
                         warehouseCell.Supplier = detail.Supplier;
                         
                         warehouseCell.UpdatedAt = DateTime.UtcNow;
@@ -461,8 +461,10 @@ public class ImportOrdersController : ControllerBase
                             
                             // Update product info - priority: detail -> product -> existing
                             existingCellProduct.Supplier = !string.IsNullOrEmpty(detail.Supplier) ? detail.Supplier : (product.SupplierNavigation?.SupplierName ?? existingCellProduct.Supplier);
-                            existingCellProduct.ProductionDate = detail.ProductionDate ?? product.ProductionDate ?? existingCellProduct.ProductionDate;
-                            existingCellProduct.ExpiryDate = detail.ExpiryDate ?? product.ExpiryDate ?? existingCellProduct.ExpiryDate;
+                            existingCellProduct.ProductionDate = detail.ProductionDate.HasValue ? DateTime.SpecifyKind(detail.ProductionDate.Value, DateTimeKind.Utc) : 
+                                (product.ProductionDate.HasValue ? DateTime.SpecifyKind(product.ProductionDate.Value, DateTimeKind.Utc) : existingCellProduct.ProductionDate);
+                            existingCellProduct.ExpiryDate = detail.ExpiryDate.HasValue ? DateTime.SpecifyKind(detail.ExpiryDate.Value, DateTimeKind.Utc) : 
+                                (product.ExpiryDate.HasValue ? DateTime.SpecifyKind(product.ExpiryDate.Value, DateTimeKind.Utc) : existingCellProduct.ExpiryDate);
                             
                             existingCellProduct.UpdatedAt = DateTime.UtcNow;
                             existingCellProduct.UpdatedBy = "System";
@@ -520,11 +522,13 @@ public class ImportOrdersController : ControllerBase
                                 TotalPrice = detail.TotalPrice ?? (detail.UnitPrice ?? 0) * detail.Quantity,
                                 UnitPrice = detail.UnitPrice ?? (detail.TotalPrice ?? 0) / (detail.Quantity > 0 ? detail.Quantity : 1),
                                 // Priority: detail -> ProductBatch -> product
-                                ProductionDate = detail.ProductionDate ?? product.ProductionDate,
-                                ExpiryDate = detail.ExpiryDate ?? product.ExpiryDate,
+                                ProductionDate = detail.ProductionDate.HasValue ? DateTime.SpecifyKind(detail.ProductionDate.Value, DateTimeKind.Utc) : 
+                                    (product.ProductionDate.HasValue ? DateTime.SpecifyKind(product.ProductionDate.Value, DateTimeKind.Utc) : null),
+                                ExpiryDate = detail.ExpiryDate.HasValue ? DateTime.SpecifyKind(detail.ExpiryDate.Value, DateTimeKind.Utc) : 
+                                    (product.ExpiryDate.HasValue ? DateTime.SpecifyKind(product.ExpiryDate.Value, DateTimeKind.Utc) : null),
                                 Supplier = !string.IsNullOrEmpty(detail.Supplier) ? detail.Supplier : product.SupplierNavigation?.SupplierName,
                                 Unit = detail.Unit ?? "kg",
-                                ArrivalDate = detail.ArrivalDate,
+                                ArrivalDate = detail.ArrivalDate.HasValue ? DateTime.SpecifyKind(detail.ArrivalDate.Value, DateTimeKind.Utc) : null,
                                 ArrivalBatchNumber = detail.ArrivalBatchNumber?.ToString(),
                                 ContainerVehicleNumber = detail.ContainerVehicleNumber?.ToString(),
                                 Notes = detail.Notes,
