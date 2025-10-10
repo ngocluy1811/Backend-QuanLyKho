@@ -25,9 +25,9 @@ public class ImportOrdersController : ControllerBase
             var productBatch = await _context.ProductBatches.FindAsync(productBatchId);
             if (productBatch != null)
             {
-                // Calculate actual quantity based on import orders
+                // Calculate actual quantity based on import orders (by BatchNumber, not ProductBatchId)
                 var totalImportedQuantity = await _context.ImportOrderDetails
-                    .Where(iod => iod.ProductBatchId == productBatchId)
+                    .Where(iod => iod.BatchNumber == productBatch.BatchNumber)
                     .SumAsync(iod => iod.ReceivedQuantity ?? iod.Quantity);
                 
                 // Calculate total exported quantity from warehouse activities

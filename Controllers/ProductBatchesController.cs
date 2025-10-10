@@ -387,16 +387,16 @@ public class ProductBatchesController : ControllerBase
                 
                 Console.WriteLine($"ProductBatch: {productBatch.BatchNumber}, Current: {productBatch.CurrentQuantity}, Remaining: {productBatch.RemainingQuantity}");
                 
-                // Lấy tất cả ImportOrderDetails cho ProductBatchId này
+                // Lấy tất cả ImportOrderDetails cho BatchNumber này (không phải ProductBatchId)
                 var importOrderDetails = await _context.ImportOrderDetails
-                    .Where(iod => iod.ProductBatchId == productBatchId)
+                    .Where(iod => iod.BatchNumber == productBatch.BatchNumber)
                     .ToListAsync();
                 
-                Console.WriteLine($"Found {importOrderDetails.Count} ImportOrderDetails for ProductBatchId {productBatchId}");
+                Console.WriteLine($"Found {importOrderDetails.Count} ImportOrderDetails for BatchNumber '{productBatch.BatchNumber}'");
                 
                 foreach (var detail in importOrderDetails)
                 {
-                    Console.WriteLine($"  - ImportOrderId: {detail.ImportOrderId}, Quantity: {detail.Quantity}, ReceivedQuantity: {detail.ReceivedQuantity}, BatchNumber: {detail.BatchNumber}");
+                    Console.WriteLine($"  - ImportOrderId: {detail.ImportOrderId}, Quantity: {detail.Quantity}, ReceivedQuantity: {detail.ReceivedQuantity}, BatchNumber: '{detail.BatchNumber}'");
                 }
                 
                 // Tính tổng số lượng từ các phiếu nhập kho
