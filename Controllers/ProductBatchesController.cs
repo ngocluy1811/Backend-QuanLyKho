@@ -69,10 +69,33 @@ public class ProductBatchesController : ControllerBase
                 
                 foreach (var pb in batches)
                 {
-                    // Calculate actual warehouse stock from ImportOrderDetails
-                    var currentQuantity = await _context.ImportOrderDetails
+                    // Calculate actual warehouse stock: cộng phiếu nhập, trừ phiếu xuất
+                    var importOrderDetails = await _context.ImportOrderDetails
                         .Where(iod => iod.BatchNumber == pb.BatchNumber)
-                        .SumAsync(iod => iod.ReceivedQuantity ?? iod.Quantity);
+                        .ToListAsync();
+                    
+                    var importOrders = await _context.ImportOrders
+                        .Where(io => importOrderDetails.Select(iod => iod.ImportOrderId).Contains(io.Id))
+                        .ToListAsync();
+                    
+                    var currentQuantity = 0;
+                    foreach (var detail in importOrderDetails)
+                    {
+                        var order = importOrders.FirstOrDefault(io => io.Id == detail.ImportOrderId);
+                        if (order != null)
+                        {
+                            if (order.OrderType == "Import")
+                            {
+                                // Cộng phiếu nhập
+                                currentQuantity += (int)(detail.ReceivedQuantity ?? detail.Quantity);
+                            }
+                            else if (order.OrderType == "Export")
+                            {
+                                // Trừ phiếu xuất
+                                currentQuantity -= (int)(detail.ReceivedQuantity ?? detail.Quantity);
+                            }
+                        }
+                    }
                     
                     batchesWithWarehouseStock.Add(new
                     {
@@ -409,9 +432,33 @@ public class ProductBatchesController : ControllerBase
                     Console.WriteLine($"  - ImportOrderId: {detail.ImportOrderId}, Quantity: {detail.Quantity}, ReceivedQuantity: {detail.ReceivedQuantity}, BatchNumber: '{detail.BatchNumber}'");
                 }
                 
-                // Tính tổng số lượng từ các phiếu nhập kho
-                var totalImportedQuantity = importOrderDetails.Sum(iod => iod.ReceivedQuantity ?? iod.Quantity);
-                Console.WriteLine($"TotalImportedQuantity: {totalImportedQuantity}");
+                // Tính tổng số lượng: cộng phiếu nhập, trừ phiếu xuất
+                var importOrders = await _context.ImportOrders
+                    .Where(io => importOrderDetails.Select(iod => iod.ImportOrderId).Contains(io.Id))
+                    .ToListAsync();
+                
+                var totalImportedQuantity = 0;
+                foreach (var detail in importOrderDetails)
+                {
+                    var order = importOrders.FirstOrDefault(io => io.Id == detail.ImportOrderId);
+                    if (order != null)
+                    {
+                        if (order.OrderType == "Import")
+                        {
+                            // Cộng phiếu nhập
+                            totalImportedQuantity += (int)(detail.ReceivedQuantity ?? detail.Quantity);
+                            Console.WriteLine($"Import order: +{detail.ReceivedQuantity ?? detail.Quantity}");
+                        }
+                        else if (order.OrderType == "Export")
+                        {
+                            // Trừ phiếu xuất
+                            totalImportedQuantity -= (int)(detail.ReceivedQuantity ?? detail.Quantity);
+                            Console.WriteLine($"Export order: -{detail.ReceivedQuantity ?? detail.Quantity}");
+                        }
+                    }
+                }
+                
+                Console.WriteLine($"TotalImportedQuantity (Import - Export): {totalImportedQuantity}");
 
                 // Cập nhật số lượng hiện tại
                 productBatch.CurrentQuantity = (int)totalImportedQuantity;
