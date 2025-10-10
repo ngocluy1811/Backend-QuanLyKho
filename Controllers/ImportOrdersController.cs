@@ -236,8 +236,7 @@ public class ImportOrdersController : ControllerBase
     {
         try
         {
-            Console.WriteLine($"Creating import order: {request.OrderName}, WarehouseId: {request.WarehouseId}, Details count: {request.Details?.Count ?? 0}");
-            
+            // Log request for debugging (removed to avoid console spam)
             // Validation
             if (request.WarehouseId <= 0)
             {
@@ -381,60 +380,37 @@ public class ImportOrdersController : ControllerBase
                     // Update WarehouseCell with product information (warehouseCell already validated above)
                     if (warehouseCell != null)
                     {
-                        try
+                        // Debug log to check WarehouseCell update
+                        Console.WriteLine($"Updating WarehouseCell - OrderType: {order.OrderType}, CellId: {detail.WarehouseCellId}, CurrentAmount before: {warehouseCell.CurrentAmount}, Quantity: {detail.Quantity}");
+                        
+                        // Update quantity - add for import, subtract for export
+                        if (order.OrderType == "Export")
                         {
-                            // Debug log to check WarehouseCell update
-                            Console.WriteLine($"Updating WarehouseCell - OrderType: {order.OrderType}, CellId: {detail.WarehouseCellId}, CurrentAmount before: {warehouseCell.CurrentAmount}, Quantity: {detail.Quantity}");
-                            
-                            // Update quantity - add for import, subtract for export
-                            if (order.OrderType == "Export")
-                            {
-                                warehouseCell.CurrentAmount -= detail.Quantity;
-                                // Ensure CurrentAmount doesn't go below 0
-                                if (warehouseCell.CurrentAmount < 0) warehouseCell.CurrentAmount = 0;
-                                Console.WriteLine($"Export: CurrentAmount after: {warehouseCell.CurrentAmount}");
-                            }
-                            else
-                            {
-                                warehouseCell.CurrentAmount += detail.Quantity;
-                                Console.WriteLine($"Import: CurrentAmount after: {warehouseCell.CurrentAmount}");
-                            }
+                            warehouseCell.CurrentAmount -= detail.Quantity;
+                            // Ensure CurrentAmount doesn't go below 0
+                            if (warehouseCell.CurrentAmount < 0) warehouseCell.CurrentAmount = 0;
+                            Console.WriteLine($"Export: CurrentAmount after: {warehouseCell.CurrentAmount}");
                         }
-                        catch (Exception ex)
+                        else
                         {
-                            Console.WriteLine($"Error updating WarehouseCell: {ex.Message}");
-                            // Continue with order creation even if warehouse cell update fails
+                            warehouseCell.CurrentAmount += detail.Quantity;
+                            Console.WriteLine($"Import: CurrentAmount after: {warehouseCell.CurrentAmount}");
                         }
                         
                         // Update product information
-                        try
-                        {
-                            warehouseCell.ProductId = detail.ProductId;
-                            warehouseCell.ProductName = product.ProductName;
-                            warehouseCell.BatchNumber = detail.BatchNumber;
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"Error updating product information: {ex.Message}");
-                        }
-                        try
-                        {
-                            warehouseCell.ProductionDate = detail.ProductionDate;
-                            warehouseCell.ExpiryDate = detail.ExpiryDate;
-                            warehouseCell.Supplier = detail.Supplier;
-                            warehouseCell.UpdatedAt = DateTime.UtcNow;
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"Error updating warehouse cell dates: {ex.Message}");
-                        }
+                        warehouseCell.ProductId = detail.ProductId;
+                        warehouseCell.ProductName = product.ProductName;
+                        warehouseCell.BatchNumber = detail.BatchNumber;
+                        warehouseCell.ProductionDate = detail.ProductionDate;
+                        warehouseCell.ExpiryDate = detail.ExpiryDate;
+                        warehouseCell.Supplier = detail.Supplier;
+                        
+                        warehouseCell.UpdatedAt = DateTime.UtcNow;
                     }
 
                     // Create or update WarehouseCellProduct for detailed product tracking
                     if (order.OrderType == "Import")
                     {
-                        try
-                        {
                         var existingCellProduct = await _context.WarehouseCellProducts
                             .FirstOrDefaultAsync(wcp => wcp.WarehouseCellId == detail.WarehouseCellId 
                                 && wcp.ProductId == detail.ProductId 
@@ -694,11 +670,6 @@ public class ImportOrdersController : ControllerBase
                             _context.WarehouseCellProducts.Add(exportCellProduct);
                             Console.WriteLine($"Created export WarehouseCellProduct with negative quantity: {exportCellProduct.Quantity}");
                         }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"Error in WarehouseCellProduct processing: {ex.Message}");
-                            // Continue with order creation even if warehouse cell product processing fails
-                        }
                     }
 
                     // Update ProductBatch quantity if ProductBatchId is provided
@@ -783,16 +754,9 @@ public class ImportOrdersController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error creating import order: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
-            if (ex.InnerException != null)
-            {
-                Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
-            }
             return StatusCode(500, new { 
                 message = "An error occurred while creating import order", 
-                error = ex.Message,
-                stackTrace = ex.StackTrace
+                error = ex.Message
             });
         }
     }
