@@ -754,9 +754,16 @@ public class ImportOrdersController : ControllerBase
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"Error creating import order: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+            }
             return StatusCode(500, new { 
                 message = "An error occurred while creating import order", 
-                error = ex.Message
+                error = ex.Message,
+                stackTrace = ex.StackTrace
             });
         }
     }
