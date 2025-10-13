@@ -464,7 +464,7 @@ namespace FertilizerWarehouseAPI.Controllers
         {
             try
             {
-                Console.WriteLine($"🔧 Creating maintenance request with data: {System.Text.Json.JsonSerializer.Serialize(dto)}");
+                // Debug logs removed for cleaner console
 
                 // Validate required fields
                 if (string.IsNullOrEmpty(dto.Title))
@@ -513,36 +513,28 @@ namespace FertilizerWarehouseAPI.Controllers
                 }
 
                 // Check if warehouse exists
-                Console.WriteLine($"🔍 Checking warehouse with ID: {dto.WarehouseId}");
                 var warehouse = await _context.Warehouses.FindAsync(dto.WarehouseId);
                 if (warehouse == null)
                 {
-                    Console.WriteLine($"❌ Warehouse not found: {dto.WarehouseId}");
                     return BadRequest(new { 
                         success = false, 
                         message = "Kho không tồn tại" 
                     });
                 }
-                Console.WriteLine($"✅ Warehouse found: {warehouse.Name}");
 
                 // Check if warehouse cell exists (if provided)
                 if (dto.WarehouseCellId.HasValue)
                 {
-                    Console.WriteLine($"🔍 Checking warehouse cell with ID: {dto.WarehouseCellId.Value}");
                     var cell = await _context.WarehouseCells.FindAsync(dto.WarehouseCellId.Value);
                     if (cell == null)
                     {
-                        Console.WriteLine($"❌ Warehouse cell not found: {dto.WarehouseCellId.Value}");
                         return BadRequest(new { 
                             success = false, 
                             message = "Vị trí kho không tồn tại" 
                         });
                     }
-                    Console.WriteLine($"✅ Warehouse cell found: {cell.CellCode}");
                 }
 
-                Console.WriteLine("🔧 Creating maintenance request entity...");
-                
                 // Ensure all DateTime values are UTC
                 var utcNow = DateTime.UtcNow;
                 var scheduledDate = dto.ScheduledDate.Kind == DateTimeKind.Utc 
@@ -568,10 +560,8 @@ namespace FertilizerWarehouseAPI.Controllers
                     CreatedAt = utcNow
                 };
 
-                Console.WriteLine("💾 Adding maintenance request to context...");
                 _context.MaintenanceRequests.Add(request);
                 await _context.SaveChangesAsync();
-                Console.WriteLine($"✅ Maintenance request created with ID: {request.Id}");
 
                 // Add to history
                 var history = new Models.Entities.MaintenanceHistory
@@ -610,8 +600,6 @@ namespace FertilizerWarehouseAPI.Controllers
 
                     _context.WarehouseActivities.Add(activity);
                     await _context.SaveChangesAsync();
-                    
-                    Console.WriteLine($"✅ Warehouse activity logged for maintenance: {request.Title} in cell {request.WarehouseCellId}");
                 }
                 catch (Exception activityEx)
                 {
