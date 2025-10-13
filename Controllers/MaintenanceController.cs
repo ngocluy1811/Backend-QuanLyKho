@@ -464,6 +464,70 @@ namespace FertilizerWarehouseAPI.Controllers
         {
             try
             {
+                // Validate required fields
+                if (string.IsNullOrEmpty(dto.Title))
+                {
+                    return BadRequest(new { 
+                        success = false, 
+                        message = "Tiêu đề là bắt buộc" 
+                    });
+                }
+
+                if (string.IsNullOrEmpty(dto.Location))
+                {
+                    return BadRequest(new { 
+                        success = false, 
+                        message = "Vị trí là bắt buộc" 
+                    });
+                }
+
+                if (string.IsNullOrEmpty(dto.MaintenanceType))
+                {
+                    return BadRequest(new { 
+                        success = false, 
+                        message = "Loại bảo trì là bắt buộc" 
+                    });
+                }
+
+                if (string.IsNullOrEmpty(dto.Priority))
+                {
+                    return BadRequest(new { 
+                        success = false, 
+                        message = "Mức độ ưu tiên là bắt buộc" 
+                    });
+                }
+
+                if (string.IsNullOrEmpty(dto.AssignedTo))
+                {
+                    return BadRequest(new { 
+                        success = false, 
+                        message = "Người phụ trách là bắt buộc" 
+                    });
+                }
+
+                // Check if warehouse exists
+                var warehouse = await _context.Warehouses.FindAsync(dto.WarehouseId);
+                if (warehouse == null)
+                {
+                    return BadRequest(new { 
+                        success = false, 
+                        message = "Kho không tồn tại" 
+                    });
+                }
+
+                // Check if warehouse cell exists (if provided)
+                if (dto.WarehouseCellId.HasValue)
+                {
+                    var cell = await _context.WarehouseCells.FindAsync(dto.WarehouseCellId.Value);
+                    if (cell == null)
+                    {
+                        return BadRequest(new { 
+                            success = false, 
+                            message = "Vị trí kho không tồn tại" 
+                        });
+                    }
+                }
+
                 var request = new Models.Entities.MaintenanceRequest
                 {
                     Title = dto.Title,
@@ -500,27 +564,35 @@ namespace FertilizerWarehouseAPI.Controllers
                 _context.MaintenanceHistories.Add(history);
                 await _context.SaveChangesAsync();
 
-                // Add to warehouse activity log
-                var activity = new Models.Entities.WarehouseActivity
+                // Add to warehouse activity log (optional, don't fail if this fails)
+                try
                 {
-                    WarehouseId = request.WarehouseId,
-                    CellId = request.WarehouseCellId,
-                    ActivityType = "Maintenance",
-                    Description = $"Tạo yêu cầu bảo trì: {request.Title}",
-                    ProductName = "",
-                    BatchNumber = "",
-                    Quantity = 0,
-                    Unit = "",
-                    UserName = request.CreatedBy,
-                    UserId = null,
-                    Timestamp = DateTime.UtcNow,
-                    Notes = $"Loại: {request.MaintenanceType}, Ưu tiên: {request.Priority}, Người phụ trách: {request.AssignedTo}",
-                    Status = "Completed",
-                    IsActive = true
-                };
+                    var activity = new Models.Entities.WarehouseActivity
+                    {
+                        WarehouseId = request.WarehouseId,
+                        CellId = request.WarehouseCellId,
+                        ActivityType = "Maintenance",
+                        Description = $"Tạo yêu cầu bảo trì: {request.Title}",
+                        ProductName = "",
+                        BatchNumber = "",
+                        Quantity = 0,
+                        Unit = "",
+                        UserName = request.CreatedBy,
+                        UserId = null,
+                        Timestamp = DateTime.UtcNow,
+                        Notes = $"Loại: {request.MaintenanceType}, Ưu tiên: {request.Priority}, Người phụ trách: {request.AssignedTo}",
+                        Status = "Completed",
+                        IsActive = true
+                    };
 
-                _context.WarehouseActivities.Add(activity);
-                await _context.SaveChangesAsync();
+                    _context.WarehouseActivities.Add(activity);
+                    await _context.SaveChangesAsync();
+                }
+                catch (Exception activityEx)
+                {
+                    // Log activity error but don't fail the main operation
+                    Console.WriteLine($"Warning: Failed to add warehouse activity: {activityEx.Message}");
+                }
 
                 return Ok(new { 
                     success = true, 
@@ -550,7 +622,8 @@ namespace FertilizerWarehouseAPI.Controllers
                 return StatusCode(500, new { 
                     success = false, 
                     message = "Lỗi khi tạo yêu cầu bảo trì", 
-                    error = ex.Message 
+                    error = ex.Message,
+                    stackTrace = ex.StackTrace
                 });
             }
         }
