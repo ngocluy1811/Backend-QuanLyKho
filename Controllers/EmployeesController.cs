@@ -275,6 +275,25 @@ namespace FertilizerWarehouseAPI.Controllers
                 Console.WriteLine($"🔍 Received DTO: FullName={updateDto.FullName}");
                 Console.WriteLine($"🔍 DTO Type: {updateDto.GetType().FullName}");
                 Console.WriteLine($"🔍 DTO Properties: {string.Join(", ", updateDto.GetType().GetProperties().Select(p => p.Name))}");
+                
+                // Debug: Try to access Password property using reflection
+                try
+                {
+                    var passwordPropReflection = updateDto.GetType().GetProperty("Password");
+                    if (passwordPropReflection != null)
+                    {
+                        var directPassword = passwordPropReflection.GetValue(updateDto);
+                        Console.WriteLine($"🔍 Direct Password access via reflection: {directPassword}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"🔍 Password property not found via reflection");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"🔍 Direct Password access failed: {ex.Message}");
+                }
 
                 var employee = await _context.Users.FindAsync(id);
                 if (employee == null)
@@ -385,36 +404,6 @@ namespace FertilizerWarehouseAPI.Controllers
                     }
                 }
                 
-                // Update password if provided (using reflection)
-                var passwordProperty = updateDto.GetType().GetProperty("Password");
-                Console.WriteLine($"🔍 Password property found: {passwordProperty != null}");
-                if (passwordProperty != null)
-                {
-                    var passwordValue = passwordProperty.GetValue(updateDto);
-                    Console.WriteLine($"🔍 Password value: {passwordValue}");
-                    Console.WriteLine($"🔍 Password value type: {passwordValue?.GetType()}");
-                    Console.WriteLine($"🔍 Password is string: {passwordValue is string}");
-                    Console.WriteLine($"🔍 Password is not null or empty: {passwordValue is string && !string.IsNullOrEmpty(passwordValue as string)}");
-                    
-                    if (passwordValue is string newPassword && !string.IsNullOrEmpty(newPassword))
-                    {
-                        // Hash the new password
-                        employee.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
-                        employee.MustChangePassword = true; // Force user to change password on next login
-                        
-                        // Log password update for debugging
-                        Console.WriteLine($"✅ Password updated for user {employee.Username} - New hash: {employee.PasswordHash.Substring(0, 20)}...");
-                    }
-                    else
-                    {
-                        // Log that password was not updated (empty or null)
-                        Console.WriteLine($"❌ Password not updated for user {employee.Username} - password was empty or null");
-                    }
-                }
-                else
-                {
-                    Console.WriteLine($"❌ Password property not found in DTO");
-                }
                 
                 employee.IsActive = updateDto.IsActive;
 
