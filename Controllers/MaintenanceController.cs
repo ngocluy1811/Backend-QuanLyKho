@@ -464,9 +464,12 @@ namespace FertilizerWarehouseAPI.Controllers
         {
             try
             {
+                Console.WriteLine($"🔧 Creating maintenance request with data: {System.Text.Json.JsonSerializer.Serialize(dto)}");
+
                 // Validate required fields
                 if (string.IsNullOrEmpty(dto.Title))
                 {
+                    Console.WriteLine("❌ Validation failed: Title is required");
                     return BadRequest(new { 
                         success = false, 
                         message = "Tiêu đề là bắt buộc" 
@@ -475,6 +478,7 @@ namespace FertilizerWarehouseAPI.Controllers
 
                 if (string.IsNullOrEmpty(dto.Location))
                 {
+                    Console.WriteLine("❌ Validation failed: Location is required");
                     return BadRequest(new { 
                         success = false, 
                         message = "Vị trí là bắt buộc" 
@@ -483,6 +487,7 @@ namespace FertilizerWarehouseAPI.Controllers
 
                 if (string.IsNullOrEmpty(dto.MaintenanceType))
                 {
+                    Console.WriteLine("❌ Validation failed: MaintenanceType is required");
                     return BadRequest(new { 
                         success = false, 
                         message = "Loại bảo trì là bắt buộc" 
@@ -491,6 +496,7 @@ namespace FertilizerWarehouseAPI.Controllers
 
                 if (string.IsNullOrEmpty(dto.Priority))
                 {
+                    Console.WriteLine("❌ Validation failed: Priority is required");
                     return BadRequest(new { 
                         success = false, 
                         message = "Mức độ ưu tiên là bắt buộc" 
@@ -499,6 +505,7 @@ namespace FertilizerWarehouseAPI.Controllers
 
                 if (string.IsNullOrEmpty(dto.AssignedTo))
                 {
+                    Console.WriteLine("❌ Validation failed: AssignedTo is required");
                     return BadRequest(new { 
                         success = false, 
                         message = "Người phụ trách là bắt buộc" 
@@ -506,28 +513,35 @@ namespace FertilizerWarehouseAPI.Controllers
                 }
 
                 // Check if warehouse exists
+                Console.WriteLine($"🔍 Checking warehouse with ID: {dto.WarehouseId}");
                 var warehouse = await _context.Warehouses.FindAsync(dto.WarehouseId);
                 if (warehouse == null)
                 {
+                    Console.WriteLine($"❌ Warehouse not found: {dto.WarehouseId}");
                     return BadRequest(new { 
                         success = false, 
                         message = "Kho không tồn tại" 
                     });
                 }
+                Console.WriteLine($"✅ Warehouse found: {warehouse.Name}");
 
                 // Check if warehouse cell exists (if provided)
                 if (dto.WarehouseCellId.HasValue)
                 {
+                    Console.WriteLine($"🔍 Checking warehouse cell with ID: {dto.WarehouseCellId.Value}");
                     var cell = await _context.WarehouseCells.FindAsync(dto.WarehouseCellId.Value);
                     if (cell == null)
                     {
+                        Console.WriteLine($"❌ Warehouse cell not found: {dto.WarehouseCellId.Value}");
                         return BadRequest(new { 
                             success = false, 
                             message = "Vị trí kho không tồn tại" 
                         });
                     }
+                    Console.WriteLine($"✅ Warehouse cell found: {cell.CellCode}");
                 }
 
+                Console.WriteLine("🔧 Creating maintenance request entity...");
                 var request = new Models.Entities.MaintenanceRequest
                 {
                     Title = dto.Title,
@@ -547,8 +561,10 @@ namespace FertilizerWarehouseAPI.Controllers
                     CreatedAt = DateTime.UtcNow
                 };
 
+                Console.WriteLine("💾 Adding maintenance request to context...");
                 _context.MaintenanceRequests.Add(request);
                 await _context.SaveChangesAsync();
+                Console.WriteLine($"✅ Maintenance request created with ID: {request.Id}");
 
                 // Add to history
                 var history = new Models.Entities.MaintenanceHistory
@@ -587,11 +603,14 @@ namespace FertilizerWarehouseAPI.Controllers
 
                     _context.WarehouseActivities.Add(activity);
                     await _context.SaveChangesAsync();
+                    
+                    Console.WriteLine($"✅ Warehouse activity logged for maintenance: {request.Title} in cell {request.WarehouseCellId}");
                 }
                 catch (Exception activityEx)
                 {
                     // Log activity error but don't fail the main operation
-                    Console.WriteLine($"Warning: Failed to add warehouse activity: {activityEx.Message}");
+                    Console.WriteLine($"❌ Warning: Failed to add warehouse activity: {activityEx.Message}");
+                    Console.WriteLine($"❌ Stack trace: {activityEx.StackTrace}");
                 }
 
                 return Ok(new { 
