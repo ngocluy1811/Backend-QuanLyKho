@@ -643,11 +643,16 @@ namespace FertilizerWarehouseAPI.Controllers
         {
             try
             {
+                // Debug: Log request data
+                Console.WriteLine($"🔍 UpdateCell request: WarehouseId={warehouseId}, CellId={cellId}");
+                Console.WriteLine($"🔍 Request data: MaxCapacity={request.MaxCapacity}, Temperature={request.Temperature}, Humidity={request.Humidity}, Ventilation={request.Ventilation}, SensorStatus={request.SensorStatus}, ElectronicScale={request.ElectronicScale}, Dimensions={request.Dimensions}");
+
                 var cell = await _context.WarehouseCells
                     .FirstOrDefaultAsync(c => c.WarehouseId == warehouseId && c.Id == cellId);
 
                 if (cell == null)
                 {
+                    Console.WriteLine($"❌ Cell not found: WarehouseId={warehouseId}, CellId={cellId}");
                     return NotFound(new { message = "Cell not found" });
                 }
 
@@ -680,6 +685,8 @@ namespace FertilizerWarehouseAPI.Controllers
                 cell.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
+
+                Console.WriteLine($"✅ Cell updated successfully: Temperature={cell.Temperature}, Humidity={cell.Humidity}, Ventilation={cell.Ventilation}, SensorStatus={cell.SensorStatus}, ElectronicScale={cell.ElectronicScale}, Dimensions={cell.Dimensions}");
 
                 return Ok(new { message = "Cell updated successfully" });
             }
