@@ -542,6 +542,13 @@ namespace FertilizerWarehouseAPI.Controllers
                 }
 
                 Console.WriteLine("🔧 Creating maintenance request entity...");
+                
+                // Ensure all DateTime values are UTC
+                var utcNow = DateTime.UtcNow;
+                var scheduledDate = dto.ScheduledDate.Kind == DateTimeKind.Utc 
+                    ? dto.ScheduledDate 
+                    : DateTime.SpecifyKind(dto.ScheduledDate, DateTimeKind.Utc);
+                
                 var request = new Models.Entities.MaintenanceRequest
                 {
                     Title = dto.Title,
@@ -550,7 +557,7 @@ namespace FertilizerWarehouseAPI.Controllers
                     MaintenanceType = dto.MaintenanceType,
                     Priority = dto.Priority,
                     AssignedTo = dto.AssignedTo,
-                    ScheduledDate = dto.ScheduledDate,
+                    ScheduledDate = scheduledDate,
                     EstimatedDuration = dto.EstimatedDuration,
                     Status = "pending",
                     Progress = 0,
@@ -558,7 +565,7 @@ namespace FertilizerWarehouseAPI.Controllers
                     WarehouseId = dto.WarehouseId,
                     WarehouseCellId = dto.WarehouseCellId,
                     CreatedBy = dto.CreatedBy ?? "System",
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = utcNow
                 };
 
                 Console.WriteLine("💾 Adding maintenance request to context...");
@@ -574,7 +581,7 @@ namespace FertilizerWarehouseAPI.Controllers
                     Description = "Yêu cầu bảo trì đã được tạo",
                     Progress = 0,
                     CreatedBy = request.CreatedBy,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = utcNow
                 };
 
                 _context.MaintenanceHistories.Add(history);
@@ -595,7 +602,7 @@ namespace FertilizerWarehouseAPI.Controllers
                         Unit = "",
                         UserName = request.CreatedBy,
                         UserId = null,
-                        Timestamp = DateTime.UtcNow,
+                        Timestamp = utcNow,
                         Notes = $"Loại: {request.MaintenanceType}, Ưu tiên: {request.Priority}, Người phụ trách: {request.AssignedTo}",
                         Status = "Completed",
                         IsActive = true
