@@ -327,7 +327,7 @@ namespace FertilizerWarehouseAPI.Controllers
                     passwordFieldExists = true, // We know it exists in the class
                     passwordValue = passwordValue,
                     passwordIsNull = passwordValue == null,
-                    passwordIsEmpty = string.IsNullOrEmpty(passwordValue),
+                    passwordIsEmpty = string.IsNullOrEmpty(passwordValue?.ToString()),
                     message = "DTO deserialization test completed"
                 });
             }
