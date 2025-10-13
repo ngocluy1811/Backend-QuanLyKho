@@ -575,8 +575,8 @@ namespace FertilizerWarehouseAPI.Controllers
         {
             try
             {
-                var cell = await _context.WarehousePositions
-                    .FirstOrDefaultAsync(p => p.WarehouseId == warehouseId && p.Id == cellId);
+                var cell = await _context.WarehouseCells
+                    .FirstOrDefaultAsync(c => c.WarehouseId == warehouseId && c.Id == cellId);
 
                 if (cell == null)
                 {
@@ -587,15 +587,15 @@ namespace FertilizerWarehouseAPI.Controllers
                 if (request.MaxCapacity.HasValue)
                     cell.MaxCapacity = request.MaxCapacity.Value;
                 if (request.CurrentCapacity.HasValue)
-                    cell.CurrentCapacity = request.CurrentCapacity.Value;
+                    cell.CurrentAmount = request.CurrentCapacity.Value;
                 if (!string.IsNullOrEmpty(request.Status))
                     cell.Status = request.Status;
                 if (!string.IsNullOrEmpty(request.Zone))
-                    cell.Zone = request.Zone;
+                    cell.ClusterName = request.Zone;
                 if (!string.IsNullOrEmpty(request.AssignedStaff))
                     cell.AssignedStaff = request.AssignedStaff;
 
-                cell.LastUpdated = DateTime.UtcNow;
+                cell.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
 
