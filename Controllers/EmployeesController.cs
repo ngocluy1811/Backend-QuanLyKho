@@ -255,6 +255,33 @@ namespace FertilizerWarehouseAPI.Controllers
         }
 
         /// <summary>
+        /// Debug endpoint to check user password
+        /// </summary>
+        [HttpGet("{id}/debug-password")]
+        public async Task<ActionResult<object>> DebugUserPassword(int id)
+        {
+            try
+            {
+                var user = await _context.Users.FindAsync(id);
+                if (user == null)
+                    return NotFound(new { message = "User not found" });
+
+                return Ok(new
+                {
+                    id = user.Id,
+                    username = user.Username,
+                    passwordHash = user.PasswordHash?.Substring(0, 20) + "...",
+                    mustChangePassword = user.MustChangePassword,
+                    updatedAt = user.UpdatedAt
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error", error = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Update employee
         /// </summary>
         [HttpPut("{id}")]
