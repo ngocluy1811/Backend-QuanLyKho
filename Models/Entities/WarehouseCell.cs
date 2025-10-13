@@ -25,6 +25,15 @@ public class WarehouseCell
     public string Status { get; set; } = "Empty"; // Empty, Occupied, Full, Reserved
     public string? ClusterName { get; set; }
     public string? AssignedStaff { get; set; }
+    
+    // Environment fields
+    public string? Temperature { get; set; }
+    public string? Humidity { get; set; }
+    public string? Ventilation { get; set; }
+    public string? SensorStatus { get; set; }
+    public string? ElectronicScale { get; set; }
+    public string? Dimensions { get; set; }
+    
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }

@@ -594,6 +594,20 @@ namespace FertilizerWarehouseAPI.Controllers
                     cell.ClusterName = request.Zone;
                 if (!string.IsNullOrEmpty(request.AssignedStaff))
                     cell.AssignedStaff = request.AssignedStaff;
+                
+                // Update environment fields
+                if (!string.IsNullOrEmpty(request.Temperature))
+                    cell.Temperature = request.Temperature;
+                if (!string.IsNullOrEmpty(request.Humidity))
+                    cell.Humidity = request.Humidity;
+                if (!string.IsNullOrEmpty(request.Ventilation))
+                    cell.Ventilation = request.Ventilation;
+                if (!string.IsNullOrEmpty(request.SensorStatus))
+                    cell.SensorStatus = request.SensorStatus;
+                if (!string.IsNullOrEmpty(request.ElectronicScale))
+                    cell.ElectronicScale = request.ElectronicScale;
+                if (!string.IsNullOrEmpty(request.Dimensions))
+                    cell.Dimensions = request.Dimensions;
 
                 cell.UpdatedAt = DateTime.UtcNow;
 
@@ -1269,6 +1283,14 @@ namespace FertilizerWarehouseAPI.Controllers
         public string? Status { get; set; }
         public string? Zone { get; set; }
         public string? AssignedStaff { get; set; }
+        
+        // Environment fields
+        public string? Temperature { get; set; }
+        public string? Humidity { get; set; }
+        public string? Ventilation { get; set; }
+        public string? SensorStatus { get; set; }
+        public string? ElectronicScale { get; set; }
+        public string? Dimensions { get; set; }
     }
 
     public class ImportGoodsRequest
