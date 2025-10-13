@@ -272,19 +272,37 @@ namespace FertilizerWarehouseAPI.Controllers
                 Console.WriteLine($"🔍 Received DTO: FullName={updateDto.FullName}");
                 Console.WriteLine($"🔍 DTO Type: {updateDto.GetType().FullName}");
                 Console.WriteLine($"🔍 DTO Properties: {string.Join(", ", updateDto.GetType().GetProperties().Select(p => p.Name))}");
+
+                var employee = await _context.Users.FindAsync(id);
+                if (employee == null)
+                    return NotFound(new { message = "Employee not found" });
                 
-                // Debug: Check if Password property exists and has value
+                // Check if Password property exists and has value
                 var passwordProp = updateDto.GetType().GetProperty("Password");
                 Console.WriteLine($"🔍 Password property exists: {passwordProp != null}");
                 if (passwordProp != null)
                 {
                     var passwordValue = passwordProp.GetValue(updateDto);
                     Console.WriteLine($"🔍 Password value from property: {passwordValue}");
+                    
+                    // Check if password is provided and not empty
+                    if (passwordValue is string newPassword && !string.IsNullOrEmpty(newPassword))
+                    {
+                        Console.WriteLine($"🔍 Password is not null or empty: {!string.IsNullOrEmpty(newPassword)}");
+                        // Hash the password and update PasswordHash
+                        employee.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+                        employee.MustChangePassword = true;
+                        Console.WriteLine($"✅ Password updated and hashed");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"🔍 Password is null or empty, skipping password update");
+                    }
                 }
-
-                var employee = await _context.Users.FindAsync(id);
-                if (employee == null)
-                    return NotFound(new { message = "Employee not found" });
+                else
+                {
+                    Console.WriteLine($"❌ Password property not found in DTO");
+                }
 
                 // Update basic fields
                 if (!string.IsNullOrEmpty(updateDto.FullName))
