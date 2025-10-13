@@ -263,8 +263,11 @@ namespace FertilizerWarehouseAPI.Controllers
         {
             try
             {
+                Console.WriteLine($"🚀 UpdateEmployee called with ID: {id}");
+                
                 if (updateDto == null)
                 {
+                    Console.WriteLine("❌ UpdateDto is null");
                     return BadRequest(new { message = "Request body cannot be null" });
                 }
 
