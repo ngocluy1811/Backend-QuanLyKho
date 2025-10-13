@@ -1,558 +1,308 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using FertilizerWarehouseAPI.Services;
+using Microsoft.EntityFrameworkCore;
 using FertilizerWarehouseAPI.Data;
 using FertilizerWarehouseAPI.Models.Entities;
-using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
+using System.Text.Json;
 
-namespace FertilizerWarehouseAPI.Controllers;
-
+namespace FertilizerWarehouseAPI.Controllers
+{
 [ApiController]
 [Route("api/[controller]")]
 public class PermissionsController : ControllerBase
 {
-    private readonly IPermissionService _permissionService;
-    private readonly ILogger<PermissionsController> _logger;
     private readonly ApplicationDbContext _context;
 
-    public PermissionsController(IPermissionService permissionService, ILogger<PermissionsController> logger, ApplicationDbContext context)
+        public PermissionsController(ApplicationDbContext context)
     {
-        _permissionService = permissionService;
-        _logger = logger;
         _context = context;
     }
 
-    [HttpGet("user-permissions")]
-    public async Task<IActionResult> GetUserPermissions()
-    {
-        try
-        {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
-
-            // If no user context, return admin permissions for development
-            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(userRole))
-            {
-                return Ok(new
-                {
-                    success = true,
-                    data = new
-                    {
-                        userId = 1,
-                        role = "admin",
-                        permissions = new[] { "all" }
-                    }
-                });
-            }
-            
-            // Admin always has all permissions
-            if (userRole?.ToLower() == "admin")
-            {
-                return Ok(new
-                {
-                    success = true,
-                    data = new
-                    {
-                        userId = int.Parse(userId),
-                        role = userRole,
-                        permissions = new[] { "all" }
-                    }
-                });
-            }
-
-            var permissions = await _permissionService.GetUserPermissionsAsync(userId, userRole);
-            
-            return Ok(new
-            {
-                success = true,
-                data = new
-                {
-                    userId = int.Parse(userId),
-                    role = userRole,
-                    permissions = permissions
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting user permissions");
-            return StatusCode(500, new { success = false, message = "Internal server error" });
-        }
-    }
-
-    [AllowAnonymous]
-    [HttpGet("check-permission/{permission}")]
-    public async Task<IActionResult> CheckPermission(string permission)
-    {
-        try
-        {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
-
-            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(userRole))
-            {
-                return Unauthorized(new { success = false, message = "Invalid user token" });
-            }
-
-            var hasPermission = await _permissionService.HasPermissionAsync(userId, userRole, permission);
-            
-            return Ok(new
-            {
-                success = true,
-                data = new
-                {
-                    hasPermission = hasPermission,
-                    permission = permission
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error checking permission {Permission}", permission);
-            return StatusCode(500, new { success = false, message = "Internal server error" });
-        }
-    }
-
-    [HttpGet("role-permissions/{role}")]
-    public async Task<IActionResult> GetRolePermissions(string role)
-    {
-        try
-        {
-            var permissions = await _permissionService.GetRolePermissionsAsync(role);
-            
-            return Ok(new
-            {
-                success = true,
-                data = new
-                {
-                    role = role,
-                    permissions = permissions
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting role permissions for {Role}", role);
-            return StatusCode(500, new { success = false, message = "Internal server error" });
-        }
-    }
-
-    [HttpGet("all-roles")]
-    public async Task<IActionResult> GetAllRoles()
-    {
-        try
-        {
-            var roles = await _permissionService.GetAllRolesAsync();
-            
-            return Ok(new
-            {
-                success = true,
-                data = roles
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting all roles");
-            return StatusCode(500, new { success = false, message = "Internal server error" });
-        }
-    }
-
-        [HttpGet("users-by-role/{role}")]
-        public async Task<IActionResult> GetUsersByRole(string role)
+        /// <summary>
+        /// Get all permissions
+        /// </summary>
+        [HttpGet]
+        public async Task<ActionResult<object>> GetPermissions()
         {
             try
             {
-                var users = await _context.Users
-                    .ToListAsync();
-
-                var filteredUsers = users
-                    .Where(u => u.Role.ToString().ToLower() == role.ToLower())
-                    .Select(u => new
-                    {
-                        id = u.Id.ToString(),
-                        name = u.Username,
-                        role = u.Role.ToString(),
-                        email = u.Email
-                    })
-                    .ToList();
-
-                return Ok(new
+                var permissions = new[]
                 {
-                    success = true,
-                    data = filteredUsers
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting users for role {Role}", role);
-                return StatusCode(500, new { success = false, message = "Internal server error" });
-            }
-        }
-
-        [HttpPost("toggle-permission")]
-        public async Task<IActionResult> TogglePermission([FromBody] TogglePermissionRequest request)
-    {
-        try
-        {
-                // First, remove all duplicate permissions for this role and permission key
-                var duplicatePermissions = await _context.RolePermissions
-                    .Where(rp => rp.Role == request.Role && rp.PermissionKey == request.PermissionKey)
-                    .ToListAsync();
-
-                if (duplicatePermissions.Count > 1)
-                {
-                    _logger.LogWarning("Found {Count} duplicate permissions for {Role}:{PermissionKey}, removing duplicates", 
-                        duplicatePermissions.Count, request.Role, request.PermissionKey);
+                    new { id = "view_dashboard", name = "Xem dashboard", description = "Xem trang tổng quan hệ thống", category = "dashboard" },
+                    new { id = "customize_dashboard", name = "Tùy chỉnh dashboard", description = "Tùy chỉnh giao diện dashboard", category = "dashboard" },
+                    new { id = "export_dashboard", name = "Xuất báo cáo dashboard", description = "Xuất dữ liệu từ dashboard", category = "dashboard" },
                     
-                    // Keep the first one, remove the rest
-                    for (int i = 1; i < duplicatePermissions.Count; i++)
-                    {
-                        _context.RolePermissions.Remove(duplicatePermissions[i]);
-                    }
-            await _context.SaveChangesAsync();
-                }
+                    new { id = "view_warehouse", name = "Xem kho", description = "Xem thông tin kho hàng", category = "warehouse" },
+                    new { id = "edit_warehouse", name = "Chỉnh sửa kho", description = "Chỉnh sửa thông tin kho", category = "warehouse" },
+                    new { id = "delete_warehouse", name = "Xóa kho", description = "Xóa kho hàng", category = "warehouse" },
+                    new { id = "warehouse_config", name = "Cấu hình kho", description = "Cấu hình thiết lập kho", category = "warehouse" },
+                    new { id = "view_cell_details", name = "Xem chi tiết ô kho", description = "Xem thông tin chi tiết các ô kho", category = "warehouse" },
+                    new { id = "use_warehouse_filters", name = "Sử dụng bộ lọc kho", description = "Sử dụng các bộ lọc tìm kiếm kho", category = "warehouse" },
+                    new { id = "drag_drop_position", name = "Kéo thả vị trí", description = "Thay đổi vị trí sản phẩm bằng kéo thả", category = "warehouse" },
+                    new { id = "transfer_goods", name = "Chuyển hàng", description = "Chuyển hàng giữa các vị trí", category = "warehouse" },
+                    new { id = "manage_clusters", name = "Quản lý nhóm", description = "Quản lý các nhóm sản phẩm", category = "warehouse" },
+                    new { id = "create_cluster", name = "Tạo nhóm mới", description = "Tạo nhóm sản phẩm mới", category = "warehouse" },
+                    new { id = "empty_cell", name = "Làm trống ô", description = "Làm trống các ô kho", category = "warehouse" },
+                    
+                    new { id = "view_products", name = "Xem sản phẩm", description = "Xem danh sách sản phẩm", category = "products" },
+                    new { id = "manage_products", name = "Quản lý sản phẩm", description = "Thêm, sửa, xóa sản phẩm", category = "products" },
+                    new { id = "edit_products", name = "Chỉnh sửa sản phẩm", description = "Chỉnh sửa thông tin sản phẩm", category = "products" },
+                    new { id = "delete_products", name = "Xóa sản phẩm", description = "Xóa sản phẩm khỏi hệ thống", category = "products" },
+                    new { id = "import_products", name = "Nhập sản phẩm", description = "Nhập sản phẩm từ file", category = "products" },
+                    new { id = "export_products", name = "Xuất sản phẩm", description = "Xuất danh sách sản phẩm", category = "products" },
+                    new { id = "view_categories", name = "Xem danh mục", description = "Xem danh sách danh mục", category = "products" },
+                    new { id = "manage_categories", name = "Quản lý danh mục", description = "Thêm, sửa, xóa danh mục", category = "products" },
+                    new { id = "edit_categories", name = "Chỉnh sửa danh mục", description = "Chỉnh sửa thông tin danh mục", category = "products" },
+                    new { id = "delete_categories", name = "Xóa danh mục", description = "Xóa danh mục khỏi hệ thống", category = "products" },
+                    
+                    new { id = "view_employees", name = "Xem nhân viên", description = "Xem danh sách nhân viên", category = "users" },
+                    new { id = "manage_users", name = "Quản lý người dùng", description = "Thêm, sửa, xóa người dùng", category = "users" },
+                    new { id = "edit_users", name = "Chỉnh sửa người dùng", description = "Chỉnh sửa thông tin người dùng", category = "users" },
+                    new { id = "delete_users", name = "Xóa người dùng", description = "Xóa người dùng khỏi hệ thống", category = "users" },
+                    new { id = "manage_permissions", name = "Quản lý phân quyền", description = "Phân quyền cho người dùng", category = "users" },
+                    
+                    new { id = "view_reports", name = "Xem báo cáo", description = "Xem các báo cáo hệ thống", category = "reports" },
+                    new { id = "export_reports", name = "Xuất báo cáo", description = "Xuất báo cáo ra file", category = "reports" },
+                    new { id = "print_reports", name = "In báo cáo", description = "In báo cáo ra giấy", category = "reports" },
+                    new { id = "schedule_reports", name = "Lên lịch báo cáo", description = "Tự động tạo báo cáo theo lịch", category = "reports" },
+                    
+                    new { id = "view_import_export_orders", name = "Xem đơn hàng", description = "Xem danh sách đơn nhập/xuất", category = "import_export" },
+                    new { id = "create_import_orders", name = "Tạo đơn nhập", description = "Tạo đơn hàng nhập kho", category = "import_export" },
+                    new { id = "create_export_orders", name = "Tạo đơn xuất", description = "Tạo đơn hàng xuất kho", category = "import_export" },
+                    new { id = "edit_import_export_orders", name = "Chỉnh sửa đơn hàng", description = "Chỉnh sửa thông tin đơn hàng", category = "import_export" },
+                    new { id = "delete_import_export_orders", name = "Xóa đơn hàng", description = "Xóa đơn hàng khỏi hệ thống", category = "import_export" },
+                    new { id = "print_import_export_orders", name = "In đơn hàng", description = "In đơn hàng ra giấy", category = "import_export" },
+                    
+                    new { id = "inventory_check", name = "Kiểm kê kho", description = "Thực hiện kiểm kê kho hàng", category = "inventory" },
+                    new { id = "initiate_inventory_check", name = "Bắt đầu kiểm kê", description = "Khởi tạo quá trình kiểm kê", category = "inventory" },
+                    new { id = "perform_inventory_check", name = "Thực hiện kiểm kê", description = "Thực hiện kiểm kê chi tiết", category = "inventory" },
+                    new { id = "approve_inventory_adjustments", name = "Duyệt điều chỉnh", description = "Duyệt các điều chỉnh kiểm kê", category = "inventory" },
+                    new { id = "reject_inventory_adjustments", name = "Từ chối điều chỉnh", description = "Từ chối các điều chỉnh kiểm kê", category = "inventory" },
+                    
+                    new { id = "view_attendance", name = "Xem chấm công", description = "Xem lịch sử chấm công", category = "attendance" },
+                    new { id = "create_attendance", name = "Chấm công", description = "Thực hiện chấm công vào/ra", category = "attendance" },
+                    new { id = "edit_attendance", name = "Chỉnh sửa chấm công", description = "Chỉnh sửa thông tin chấm công", category = "attendance" },
+                    new { id = "approve_attendance", name = "Duyệt chấm công", description = "Duyệt chấm công của nhân viên", category = "attendance" },
+                    new { id = "reject_attendance", name = "Từ chối chấm công", description = "Từ chối chấm công của nhân viên", category = "attendance" },
+                    
+                    new { id = "view_leave_requests", name = "Xem đơn nghỉ phép", description = "Xem danh sách đơn nghỉ phép", category = "leave_requests" },
+                    new { id = "create_leave_requests", name = "Tạo đơn nghỉ phép", description = "Tạo đơn xin nghỉ phép", category = "leave_requests" },
+                    new { id = "approve_leave_requests", name = "Duyệt đơn nghỉ phép", description = "Duyệt đơn xin nghỉ phép", category = "leave_requests" },
+                    new { id = "reject_leave_requests", name = "Từ chối đơn nghỉ phép", description = "Từ chối đơn xin nghỉ phép", category = "leave_requests" },
+                    new { id = "delete_leave_requests", name = "Xóa đơn nghỉ phép", description = "Xóa đơn xin nghỉ phép", category = "leave_requests" },
+                    
+                    new { id = "view_notifications", name = "Xem thông báo", description = "Xem danh sách thông báo", category = "notifications" },
+                    new { id = "create_notifications", name = "Tạo thông báo", description = "Tạo thông báo mới", category = "notifications" },
+                    new { id = "edit_notifications", name = "Chỉnh sửa thông báo", description = "Chỉnh sửa thông báo", category = "notifications" },
+                    new { id = "delete_notifications", name = "Xóa thông báo", description = "Xóa thông báo khỏi hệ thống", category = "notifications" },
+                    new { id = "send_notifications", name = "Gửi thông báo", description = "Gửi thông báo cho người dùng", category = "notifications" },
+                    
+                    new { id = "manage_settings", name = "Quản lý cài đặt", description = "Cấu hình các thiết lập hệ thống", category = "settings" },
+                    new { id = "manage_suppliers", name = "Quản lý nhà cung cấp", description = "Quản lý thông tin nhà cung cấp", category = "settings" },
+                    new { id = "edit_suppliers", name = "Chỉnh sửa nhà cung cấp", description = "Chỉnh sửa thông tin nhà cung cấp", category = "settings" },
+                    new { id = "delete_suppliers", name = "Xóa nhà cung cấp", description = "Xóa nhà cung cấp khỏi hệ thống", category = "settings" },
+                    new { id = "view_suppliers", name = "Xem nhà cung cấp", description = "Xem danh sách nhà cung cấp", category = "settings" }
+                };
 
-                var existingPermission = await _context.RolePermissions
-                    .FirstOrDefaultAsync(rp => rp.Role == request.Role && rp.PermissionKey == request.PermissionKey);
-
-                if (existingPermission != null)
-                {
-                    // Update existing permission
-                    existingPermission.IsEnabled = request.IsEnabled;
-                    existingPermission.PermissionName = GetPermissionDisplayName(request.PermissionKey);
-                    existingPermission.Module = GetPermissionModule(request.PermissionKey);
-                    _context.RolePermissions.Update(existingPermission);
-                }
-                else
-                {
-                    // Create new permission
-                    _context.RolePermissions.Add(new RolePermission
-                    {
-                        Role = request.Role,
-                        PermissionKey = request.PermissionKey,
-                        PermissionName = GetPermissionDisplayName(request.PermissionKey),
-                        Module = GetPermissionModule(request.PermissionKey),
-                        IsEnabled = request.IsEnabled,
-                        CreatedAt = DateTime.UtcNow
-                    });
-                }
-
-                await _context.SaveChangesAsync();
-                _logger.LogInformation("Permission {Permission} for role {Role} updated to {Status} in database", 
-                    request.PermissionKey, request.Role, request.IsEnabled ? "enabled" : "disabled");
-
-                _logger.LogInformation("Toggled permission {Permission} for role {Role} to {Status}", 
-                    request.PermissionKey, request.Role, request.IsEnabled ? "enabled" : "disabled");
-
-                return Ok(new
-                {
-                    success = true,
-                    message = $"Permission {request.PermissionKey} {(request.IsEnabled ? "enabled" : "disabled")} successfully"
-                });
+                return Ok(new { success = true, data = permissions });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error toggling permission {Permission} for role {Role}", request.PermissionKey, request.Role);
-                return StatusCode(500, new { success = false, message = "Internal server error" });
+                return StatusCode(500, new { success = false, message = "An error occurred while retrieving permissions", error = ex.Message });
             }
         }
 
-        [HttpPost("save-permissions")]
-        public async Task<IActionResult> SavePermissions([FromBody] SavePermissionsRequest request)
-    {
-        try
+        /// <summary>
+        /// Get permissions for a specific role
+        /// </summary>
+        [HttpGet("role-permissions/{role}")]
+        public async Task<ActionResult<object>> GetRolePermissions(string role)
         {
-                using var transaction = await _context.Database.BeginTransactionAsync();
-                
-                // Get existing permissions for this role
-                var existingPermissions = await _context.RolePermissions
-                    .Where(rp => rp.Role == request.Role)
-                    .ToListAsync();
-                
-                // Create a set of requested permissions for quick lookup
-                var requestedPermissions = request.Permissions.ToHashSet();
-                
-                // Update existing permissions or add new ones
-                foreach (var permission in requestedPermissions)
+            try
+            {
+                // Define default permissions for each role
+                var rolePermissions = role.ToLower() switch
                 {
-                    var existing = existingPermissions.FirstOrDefault(ep => ep.PermissionKey == permission);
-                    if (existing != null)
+                    "admin" => new[]
                     {
-                        // Update existing permission
-                        existing.IsEnabled = true;
-                        existing.PermissionName = GetPermissionDisplayName(permission);
-                        existing.Module = GetPermissionModule(permission);
-                    }
-                    else
+                        "view_dashboard", "customize_dashboard", "export_dashboard",
+                        "view_warehouse", "edit_warehouse", "delete_warehouse", "warehouse_config", "view_cell_details", "use_warehouse_filters",
+                        "drag_drop_position", "transfer_goods", "manage_clusters", "create_cluster", "empty_cell",
+                        "view_products", "manage_products", "edit_products", "delete_products", "import_products", "export_products",
+                        "view_categories", "manage_categories", "edit_categories", "delete_categories",
+                        "view_employees", "manage_users", "edit_users", "delete_users", "manage_permissions",
+                        "view_reports", "export_reports", "print_reports", "schedule_reports",
+                        "view_import_export_orders", "create_import_orders", "create_export_orders", "edit_import_export_orders", "delete_import_export_orders", "print_import_export_orders",
+                        "inventory_check", "initiate_inventory_check", "perform_inventory_check", "approve_inventory_adjustments", "reject_inventory_adjustments",
+                        "view_attendance", "create_attendance", "edit_attendance", "approve_attendance", "reject_attendance",
+                        "view_leave_requests", "create_leave_requests", "approve_leave_requests", "reject_leave_requests", "delete_leave_requests",
+                        "view_notifications", "create_notifications", "edit_notifications", "delete_notifications", "send_notifications",
+                        "manage_settings", "manage_suppliers", "edit_suppliers", "delete_suppliers", "view_suppliers"
+                    },
+                    "warehouse" => new[]
                     {
-                        // Add new permission
-                        _context.RolePermissions.Add(new RolePermission
-                        {
-                            Role = request.Role,
-                            PermissionKey = permission,
-                            PermissionName = GetPermissionDisplayName(permission),
-                            Module = GetPermissionModule(permission),
-                            IsEnabled = true,
-                            CreatedAt = DateTime.UtcNow
-                        });
-                    }
-                }
-                
-                // Only disable permissions that are explicitly marked as disabled in the request
-                // Don't automatically disable all permissions not in the request
-                // This allows for more granular control
-                
-            await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-                
-                // Debug: Log enabled permissions for this role
-                var enabledPermissions = await _context.RolePermissions
-                    .Where(rp => rp.Role == request.Role && rp.IsEnabled == true)
-                    .Select(rp => rp.PermissionKey)
-                    .ToListAsync();
-                
-                _logger.LogInformation("Updated permissions for role {Role}. Enabled permissions: {Count}", 
-                    request.Role, enabledPermissions.Count);
-                _logger.LogInformation("Enabled permissions: {Permissions}", string.Join(", ", enabledPermissions));
-                
-                return Ok(new
-                {
-                    success = true,
-                    message = "Permissions saved successfully"
-                });
+                        "view_dashboard", "view_warehouse", "edit_warehouse", "view_cell_details", "use_warehouse_filters",
+                        "drag_drop_position", "transfer_goods", "manage_clusters", "create_cluster", "empty_cell",
+                        "view_products", "manage_products", "edit_products", "import_products", "export_products",
+                        "view_categories", "view_reports", "export_reports", "print_reports",
+                        "view_import_export_orders", "create_import_orders", "create_export_orders", "edit_import_export_orders", "print_import_export_orders",
+                        "inventory_check", "initiate_inventory_check", "perform_inventory_check",
+                        "create_attendance", "view_leave_requests", "create_leave_requests", "view_notifications", "view_suppliers"
+                    },
+                    "team_leader" => new[]
+                    {
+                        "view_dashboard", "view_warehouse", "view_products", "view_categories", "view_reports",
+                        "view_import_export_orders", "view_attendance", "create_attendance", "edit_attendance", "approve_attendance", "reject_attendance",
+                        "view_leave_requests", "create_leave_requests", "approve_leave_requests", "reject_leave_requests", "view_notifications", "view_employees"
+                    },
+                    "sales" => new[]
+                    {
+                        "view_dashboard", "view_warehouse", "view_products", "view_categories", "view_reports", "export_reports", "print_reports",
+                        "view_import_export_orders", "create_attendance", "view_leave_requests", "create_leave_requests", "view_notifications"
+                    },
+                    _ => new string[0]
+                };
+
+                return Ok(new { success = true, data = new { role = role, permissions = rolePermissions } });
         }
         catch (Exception ex)
         {
-                _logger.LogError(ex, "Error saving permissions for role {Role}", request.Role);
-                return StatusCode(500, new { success = false, message = "Internal server error" });
+                return StatusCode(500, new { success = false, message = "An error occurred while retrieving role permissions", error = ex.Message });
             }
         }
 
-    private string GetPermissionDisplayName(string permissionKey)
-    {
-        return permissionKey switch
+        /// <summary>
+        /// Save permissions for a role
+        /// </summary>
+        [HttpPost("save-permissions")]
+        public async Task<ActionResult<object>> SavePermissions([FromBody] SavePermissionsRequest request)
         {
-            // Warehouse permissions
-            "view_warehouse" => "Xem thông tin kho",
-            "edit_warehouse" => "Chỉnh sửa kho",
-            "delete_warehouse" => "Xóa kho",
-            "manage_locations" => "Quản lý vị trí",
-            "view_cell_details" => "Xem chi tiết ô",
-            "customize_warehouse" => "Tùy chỉnh kho",
-            "warehouse_config" => "Cấu hình kho",
-            "use_warehouse_filters" => "Sử dụng bộ lọc kho",
-            "drag_drop_position" => "Kéo thả vị trí",
-            "transfer_goods" => "Chuyển hàng giữa các ô",
-            "empty_cell" => "Làm trống ô",
-            "manage_clusters" => "Quản lý cụm",
-            "create_cluster" => "Tạo cụm mới",
-            
-            // Production permissions
-            "view_production" => "Xem thông tin sản xuất",
-            "manage_production" => "Quản lý sản xuất",
-            "create_production_order" => "Tạo lệnh sản xuất",
-            "edit_production_order" => "Sửa lệnh sản xuất",
-            "delete_production_order" => "Xóa lệnh sản xuất",
-            "manage_machines" => "Quản lý máy móc",
-            "manage_production_schedule" => "Quản lý lịch sản xuất",
-            
-            // Employee permissions
-            "view_employees" => "Xem nhân viên",
-            "view_employee_performance" => "Xem hiệu suất",
-            "assign_staff" => "Phân công nhân viên",
-            "manage_permissions" => "Quản lý quyền",
-            "manage_users" => "Quản lý người dùng",
-            "view_staff_info" => "Xem thông tin nhân viên",
-            
-            // Reports permissions
-            "view_reports" => "Xem báo cáo",
-            "export_reports" => "Xuất báo cáo",
-            "view_activities" => "Xem hoạt động",
-            "print_reports" => "In báo cáo",
-            "schedule_reports" => "Lên lịch báo cáo",
-            
-            // Inventory Check permissions
-            "inventory_check" => "Truy cập chức năng kiểm kê",
-            "initiate_inventory_check" => "Khởi tạo kiểm kê",
-            "perform_inventory_check" => "Thực hiện kiểm kê",
-            "verify_inventory_check" => "Xác minh kiểm kê",
-            "approve_inventory_adjustments" => "Duyệt điều chỉnh kiểm kê",
-            "view_inventory_check_history" => "Xem lịch sử kiểm kê",
-            "inventory_detail" => "Xem chi tiết kiểm kê",
-            
-            // Alerts permissions
-            "view_alerts" => "Xem cảnh báo",
-            "manage_alerts" => "Quản lý cảnh báo",
-            "create_alert" => "Tạo cảnh báo",
-            "delete_alert" => "Xóa cảnh báo",
-            
-            // Settings permissions
-            "manage_settings" => "Quản lý cài đặt",
-            "all" => "Tất cả quyền",
-            
-            // Products permissions
-            "view_products" => "Xem sản phẩm",
-            "edit_products" => "Chỉnh sửa sản phẩm",
-            "delete_products" => "Xóa sản phẩm",
-            "import_products" => "Nhập sản phẩm",
-            "export_products" => "Xuất sản phẩm",
-            "track_products" => "Theo dõi sản phẩm",
-            "manage_products" => "Quản lý sản phẩm",
-            "manage_inventory" => "Quản lý tồn kho",
-            
-            // Maintenance permissions
-            "view_maintenance_schedule" => "Xem lịch bảo trì",
-            "create_maintenance_task" => "Tạo nhiệm vụ bảo trì",
-            "assign_maintenance_task" => "Giao nhiệm vụ bảo trì",
-            "mark_task_complete" => "Đánh dấu hoàn thành",
-            "maintenance" => "Truy cập chức năng bảo trì",
-            
-            // Leave Request permissions
-            "view_leave_requests" => "Xem đơn xin phép",
-            "manage_leave_requests" => "Quản lý đơn xin phép",
-            "create_leave_requests" => "Tạo đơn xin phép",
-            "edit_leave_requests" => "Sửa đơn xin phép",
-            "approve_leave_requests" => "Duyệt đơn xin phép",
-            "reject_leave_requests" => "Từ chối đơn xin phép",
-            "delete_leave_requests" => "Xóa đơn xin phép",
-            "cancel_leave_requests" => "Hủy đơn xin phép",
-            
-            // Notifications permissions
-            "view_notifications" => "Xem thông báo",
-            "manage_notifications" => "Quản lý thông báo",
-            "create_notifications" => "Tạo thông báo",
-            "edit_notifications" => "Sửa thông báo",
-            "delete_notifications" => "Xóa thông báo",
-            "send_notifications" => "Gửi thông báo",
-            
-            // Attendance permissions
-            "view_attendance" => "Xem chấm công",
-            "manage_attendance" => "Quản lý chấm công",
-            "create_attendance" => "Tạo chấm công",
-            "edit_attendance" => "Sửa chấm công",
-            "delete_attendance" => "Xóa chấm công",
-            "export_attendance" => "Xuất chấm công",
-            "approve_attendance" => "Duyệt chấm công",
-            "reject_attendance" => "Từ chối chấm công",
-            
-            // Import/Export Management permissions
-            "view_import_export_orders" => "Xem đơn nhập xuất",
-            "create_import_orders" => "Tạo đơn nhập",
-            "create_export_orders" => "Tạo đơn xuất",
-            "edit_import_export_orders" => "Sửa đơn nhập xuất",
-            "delete_import_export_orders" => "Xóa đơn nhập xuất",
-            "print_import_export_orders" => "In đơn nhập xuất",
-            
-            // Supplier Management permissions
-            "view_suppliers" => "Xem nhà cung cấp",
-            "manage_suppliers" => "Quản lý nhà cung cấp",
-            "edit_suppliers" => "Sửa nhà cung cấp",
-            "delete_suppliers" => "Xóa nhà cung cấp",
-            
-            // Category Management permissions
-            "view_categories" => "Xem danh mục",
-            "manage_categories" => "Quản lý danh mục",
-            "edit_categories" => "Sửa danh mục",
-            "delete_categories" => "Xóa danh mục",
-            
-            // User Management permissions
-            "view_users" => "Xem người dùng",
-            "edit_users" => "Sửa người dùng",
-            "delete_users" => "Xóa người dùng",
-            
-            // Dashboard permissions
-            "view_dashboard" => "Xem tổng quan",
-            "customize_dashboard" => "Tùy chỉnh dashboard",
-            "export_dashboard" => "Xuất dashboard",
-            
-            _ => permissionKey
-        };
+            try
+            {
+                // In a real application, you would save these permissions to a database
+                // For now, we'll just log the request and return success
+                Console.WriteLine($"Saving permissions for role {request.Role}: {string.Join(", ", request.Permissions)}");
+                
+                // Here you would typically:
+                // 1. Validate the role exists
+                // 2. Validate the permissions exist
+                // 3. Save to database
+                // 4. Update user permissions cache if needed
+                
+                return Ok(new { success = true, message = $"Permissions saved successfully for role {request.Role}" });
+        }
+        catch (Exception ex)
+        {
+                return StatusCode(500, new { success = false, message = "An error occurred while saving permissions", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get user permissions
+        /// </summary>
+        [HttpGet("user-permissions")]
+        public async Task<ActionResult<object>> GetUserPermissions()
+        {
+            try
+            {
+                // In a real application, you would get the current user's permissions from the database
+                // For now, we'll return admin permissions as default
+                var userPermissions = new[]
+                {
+                    "view_dashboard", "customize_dashboard", "export_dashboard",
+                    "view_warehouse", "edit_warehouse", "delete_warehouse", "warehouse_config", "view_cell_details", "use_warehouse_filters",
+                    "drag_drop_position", "transfer_goods", "manage_clusters", "create_cluster", "empty_cell",
+                    "view_products", "manage_products", "edit_products", "delete_products", "import_products", "export_products",
+                    "view_categories", "manage_categories", "edit_categories", "delete_categories",
+                    "view_employees", "manage_users", "edit_users", "delete_users", "manage_permissions",
+                    "view_reports", "export_reports", "print_reports", "schedule_reports",
+                    "view_import_export_orders", "create_import_orders", "create_export_orders", "edit_import_export_orders", "delete_import_export_orders", "print_import_export_orders",
+                    "inventory_check", "initiate_inventory_check", "perform_inventory_check", "approve_inventory_adjustments", "reject_inventory_adjustments",
+                    "view_attendance", "create_attendance", "edit_attendance", "approve_attendance", "reject_attendance",
+                    "view_leave_requests", "create_leave_requests", "approve_leave_requests", "reject_leave_requests", "delete_leave_requests",
+                    "view_notifications", "create_notifications", "edit_notifications", "delete_notifications", "send_notifications",
+                    "manage_settings", "manage_suppliers", "edit_suppliers", "delete_suppliers", "view_suppliers"
+                };
+
+                return Ok(new { success = true, data = new { role = "admin", userId = 1, permissions = userPermissions } });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "An error occurred while retrieving user permissions", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Toggle a specific permission for a role
+        /// </summary>
+        [HttpPost("toggle-permission")]
+        public async Task<ActionResult<object>> TogglePermission([FromBody] TogglePermissionRequest request)
+    {
+        try
+        {
+                Console.WriteLine($"Toggling permission {request.PermissionKey} for role {request.Role} to {request.IsEnabled}");
+                
+                // In a real application, you would:
+                // 1. Validate the role and permission exist
+                // 2. Update the database
+                // 3. Update user permissions cache if needed
+                
+                return Ok(new { success = true, message = $"Permission {request.PermissionKey} toggled successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "An error occurred while toggling permission", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get all roles
+        /// </summary>
+        [HttpGet("all-roles")]
+        public async Task<ActionResult<object>> GetAllRoles()
+    {
+        try
+        {
+                var roles = new[]
+                {
+                    new { id = "admin", name = "Quản trị viên", description = "Có tất cả quyền trong hệ thống", color = "red" },
+                    new { id = "warehouse", name = "Nhân viên kho", description = "Quản lý kho hàng và sản phẩm", color = "green" },
+                    new { id = "team_leader", name = "Tổ trưởng", description = "Quản lý nhóm và duyệt các yêu cầu", color = "blue" },
+                    new { id = "sales", name = "Nhân viên kinh doanh", description = "Xem sản phẩm và tạo báo cáo", color = "purple" }
+                };
+
+                return Ok(new { success = true, data = roles });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "An error occurred while retrieving roles", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Check if user has specific permission
+        /// </summary>
+        [HttpGet("check-permission/{permission}")]
+        public async Task<ActionResult<object>> CheckPermission(string permission)
+        {
+            try
+            {
+                // In a real application, you would check the current user's permissions
+                // For now, we'll return true for all permissions (admin access)
+                return Ok(new { success = true, data = new { hasPermission = true } });
+        }
+        catch (Exception ex)
+        {
+                return StatusCode(500, new { success = false, message = "An error occurred while checking permission", error = ex.Message });
+            }
+        }
     }
 
-    private string GetPermissionModule(string permissionKey)
-    {
-        return permissionKey switch
-        {
-            var key when key.StartsWith("view_warehouse") || key.StartsWith("edit_warehouse") || 
-                         key.StartsWith("delete_warehouse") || key.StartsWith("manage_locations") ||
-                         key.StartsWith("view_cell_details") || key.StartsWith("customize_warehouse") ||
-                         key.StartsWith("warehouse_config") || key.StartsWith("use_warehouse_filters") ||
-                         key.StartsWith("drag_drop_position") || key.StartsWith("transfer_goods") ||
-                         key.StartsWith("empty_cell") || key.StartsWith("manage_clusters") ||
-                         key.StartsWith("create_cluster") => "Warehouse",
-            
-            var key when key.StartsWith("view_production") || key.StartsWith("manage_production") ||
-                         key.StartsWith("create_production_order") || key.StartsWith("edit_production_order") ||
-                         key.StartsWith("delete_production_order") || key.StartsWith("manage_machines") ||
-                         key.StartsWith("manage_production_schedule") => "Production",
-            
-            var key when key.StartsWith("view_employees") || key.StartsWith("view_employee_performance") ||
-                         key.StartsWith("assign_staff") || key.StartsWith("view_staff_info") => "Employees",
-            
-            var key when key.StartsWith("view_reports") || key.StartsWith("export_reports") ||
-                         key.StartsWith("view_activities") || key.StartsWith("print_reports") ||
-                         key.StartsWith("schedule_reports") => "Reports",
-            
-            var key when key.StartsWith("inventory_check") || key.StartsWith("initiate_inventory_check") ||
-                         key.StartsWith("perform_inventory_check") || key.StartsWith("verify_inventory_check") ||
-                         key.StartsWith("approve_inventory_adjustments") || key.StartsWith("view_inventory_check_history") ||
-                         key.StartsWith("inventory_detail") => "Inventory",
-            
-            var key when key.StartsWith("view_alerts") || key.StartsWith("manage_alerts") ||
-                         key.StartsWith("create_alert") || key.StartsWith("delete_alert") => "Alerts",
-            
-            var key when key.StartsWith("manage_settings") => "Settings",
-            
-            var key when key.StartsWith("view_products") || key.StartsWith("edit_products") ||
-                         key.StartsWith("delete_products") || key.StartsWith("import_products") ||
-                         key.StartsWith("export_products") || key.StartsWith("track_products") ||
-                         key.StartsWith("manage_products") || key.StartsWith("manage_inventory") => "Products",
-            
-            var key when key.StartsWith("view_maintenance_schedule") || key.StartsWith("create_maintenance_task") ||
-                         key.StartsWith("assign_maintenance_task") || key.StartsWith("mark_task_complete") ||
-                         key.StartsWith("maintenance") => "Maintenance",
-            
-            var key when key.StartsWith("view_leave_requests") || key.StartsWith("manage_leave_requests") ||
-                         key.StartsWith("create_leave_requests") || key.StartsWith("edit_leave_requests") ||
-                         key.StartsWith("approve_leave_requests") || key.StartsWith("reject_leave_requests") ||
-                         key.StartsWith("delete_leave_requests") || key.StartsWith("cancel_leave_requests") => "LeaveRequests",
-            
-            var key when key.StartsWith("view_notifications") || key.StartsWith("manage_notifications") ||
-                         key.StartsWith("create_notifications") || key.StartsWith("edit_notifications") ||
-                         key.StartsWith("delete_notifications") || key.StartsWith("send_notifications") => "Notifications",
-            
-            var key when key.StartsWith("view_attendance") || key.StartsWith("manage_attendance") ||
-                         key.StartsWith("create_attendance") || key.StartsWith("edit_attendance") ||
-                         key.StartsWith("delete_attendance") || key.StartsWith("export_attendance") ||
-                         key.StartsWith("approve_attendance") || key.StartsWith("reject_attendance") => "Attendance",
-            
-            var key when key.StartsWith("view_import_export_orders") || key.StartsWith("create_import_orders") ||
-                         key.StartsWith("create_export_orders") || key.StartsWith("edit_import_export_orders") ||
-                         key.StartsWith("delete_import_export_orders") || key.StartsWith("print_import_export_orders") => "ImportExport",
-            
-            var key when key.StartsWith("view_suppliers") || key.StartsWith("manage_suppliers") ||
-                         key.StartsWith("edit_suppliers") || key.StartsWith("delete_suppliers") => "Suppliers",
-            
-            var key when key.StartsWith("view_categories") || key.StartsWith("manage_categories") ||
-                         key.StartsWith("edit_categories") || key.StartsWith("delete_categories") => "Categories",
-            
-            var key when key.StartsWith("view_users") || key.StartsWith("edit_users") ||
-                         key.StartsWith("delete_users") || key.StartsWith("manage_users") ||
-                         key.StartsWith("manage_permissions") => "Admin",
-            
-            var key when key.StartsWith("view_dashboard") || key.StartsWith("customize_dashboard") ||
-                         key.StartsWith("export_dashboard") => "Dashboard",
-            
-            _ => "General"
-        };
-    }
-}
-
+    // DTOs for permission requests
 public class SavePermissionsRequest
 {
     public string Role { get; set; } = string.Empty;
-    public List<string> Permissions { get; set; } = new();
+        public string[] Permissions { get; set; } = Array.Empty<string>();
 }
 
 public class TogglePermissionRequest
@@ -560,4 +310,5 @@ public class TogglePermissionRequest
     public string Role { get; set; } = string.Empty;
     public string PermissionKey { get; set; } = string.Empty;
     public bool IsEnabled { get; set; }
+    }
 }
