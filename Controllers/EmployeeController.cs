@@ -149,6 +149,13 @@ namespace FertilizerWarehouseAPI.Controllers
                 user.Position = request.Position;
                 user.DepartmentId = request.DepartmentId;
                 
+                // Handle password update if provided
+                if (!string.IsNullOrEmpty(request.Password))
+                {
+                    user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+                    user.MustChangePassword = true;
+                }
+                
                 // Convert string role to enum
                 if (!string.IsNullOrEmpty(request.Role))
                 {
@@ -255,6 +262,7 @@ namespace FertilizerWarehouseAPI.Controllers
         public string Phone { get; set; } = string.Empty;
         public string Address { get; set; } = string.Empty;
         public string Position { get; set; } = string.Empty;
+        public string? Password { get; set; } // Optional password field for updates
         public int? DepartmentId { get; set; }
         public string Role { get; set; } = string.Empty;
         public bool IsActive { get; set; }
