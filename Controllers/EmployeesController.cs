@@ -399,13 +399,13 @@ namespace FertilizerWarehouseAPI.Controllers
                 if (employee == null)
                     return NotFound(new { message = "Employee not found" });
                 
-                // Check if Password property exists and has value
-                var passwordProp = updateDto.GetType().GetProperty("Password");
-                Console.WriteLine($"🔍 Password property exists: {passwordProp != null}");
+                // Check if PasswordField property exists and has value
+                var passwordProp = updateDto.GetType().GetProperty("PasswordField");
+                Console.WriteLine($"🔍 PasswordField property exists: {passwordProp != null}");
                 if (passwordProp != null)
                 {
                     var passwordValue = passwordProp.GetValue(updateDto);
-                    Console.WriteLine($"🔍 Password value from property: {passwordValue}");
+                    Console.WriteLine($"🔍 PasswordField value from property: {passwordValue}");
                     
                     // Check if password is provided and not empty
                     if (passwordValue is string newPassword && !string.IsNullOrEmpty(newPassword))
@@ -423,7 +423,7 @@ namespace FertilizerWarehouseAPI.Controllers
                 }
                 else
                 {
-                    Console.WriteLine($"❌ Password property not found in DTO");
+                    Console.WriteLine($"❌ PasswordField property not found in DTO");
                 }
 
                 // Update basic fields
