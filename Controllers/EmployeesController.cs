@@ -306,6 +306,34 @@ namespace FertilizerWarehouseAPI.Controllers
             }
         }
 
+        /// <summary>
+        /// Test endpoint to verify DTO deserialization
+        /// </summary>
+        [HttpPost("test-dto-deserialization")]
+        public ActionResult<object> TestDtoDeserialization([FromBody] UpdateEmployeeDto dto)
+        {
+            try
+            {
+                Console.WriteLine($"🔍 Test DTO received: {System.Text.Json.JsonSerializer.Serialize(dto)}");
+                
+                var passwordField = dto.GetType().GetProperty("Password");
+                var passwordValue = passwordField?.GetValue(dto);
+                
+                return Ok(new
+                {
+                    dtoType = dto.GetType().FullName,
+                    dtoProperties = dto.GetType().GetProperties().Select(p => p.Name).ToArray(),
+                    passwordFieldExists = passwordField != null,
+                    passwordValue = passwordValue,
+                    message = "DTO deserialization test completed"
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error", error = ex.Message });
+            }
+        }
+
         public class TestPasswordRequest
         {
             public string Password { get; set; } = string.Empty;
