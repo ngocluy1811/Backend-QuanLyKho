@@ -527,30 +527,45 @@ namespace FertilizerWarehouseAPI.Controllers
         {
             try
             {
-                var cell = await _context.WarehousePositions
-                    .Where(p => p.WarehouseId == warehouseId && p.Id == cellId)
-                    .Select(p => new
+                var cell = await _context.WarehouseCells
+                    .Where(c => c.WarehouseId == warehouseId && c.Id == cellId)
+                    .Select(c => new
                     {
-                        p.Id,
-                        p.Row,
-                        p.Column,
-                        p.Code,
-                        p.Zone,
-                        p.MaxCapacity,
-                        p.CurrentCapacity,
-                        p.Status,
-                        p.LastUpdated,
-                        ProductName = (string)null,
-                        BatchNumber = (string)null,
-                        LastMoved = p.LastUpdated,
-                        ClusterName = "Khu vực A",
-                        Temperature = 28,
-                        Humidity = 50,
-                        Ventilation = "Hoạt động",
-                        Sensor = "Bình thường",
-                        Scale = "Kết nối",
-                        ResponsibleStaff = (string)null,
-                        RecentActivities = new List<object>()
+                        c.Id,
+                        c.Row,
+                        c.Column,
+                        c.CellCode,
+                        c.ClusterName,
+                        c.MaxCapacity,
+                        c.CurrentAmount,
+                        c.Status,
+                        c.LastMoved,
+                        c.ProductName,
+                        c.BatchNumber,
+                        c.ProductionDate,
+                        c.ExpiryDate,
+                        c.Supplier,
+                        c.AssignedStaff,
+                        c.Temperature,
+                        c.Humidity,
+                        c.Ventilation,
+                        c.SensorStatus,
+                        c.ElectronicScale,
+                        c.Dimensions,
+                        RecentActivities = _context.WarehouseActivities
+                            .Where(wa => wa.CellId == cellId)
+                            .OrderByDescending(wa => wa.Timestamp)
+                            .Take(10)
+                            .Select(wa => new
+                            {
+                                wa.Id,
+                                wa.ActivityType,
+                                wa.Description,
+                                wa.UserName,
+                                wa.Timestamp,
+                                wa.Status
+                            })
+                            .ToList()
                     })
                     .FirstOrDefaultAsync();
 
