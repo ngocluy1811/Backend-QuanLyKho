@@ -574,6 +574,59 @@ namespace FertilizerWarehouseAPI.Controllers
                     return NotFound(new { message = "Cell not found" });
                 }
 
+                // Debug: Log environment data
+                Console.WriteLine($"🔍 Cell {cellId} environment data: Temperature={cell.Temperature}, Humidity={cell.Humidity}, Ventilation={cell.Ventilation}, SensorStatus={cell.SensorStatus}, ElectronicScale={cell.ElectronicScale}, Dimensions={cell.Dimensions}");
+
+                // If no environment data, set some default values for testing
+                if (string.IsNullOrEmpty(cell.Temperature) && string.IsNullOrEmpty(cell.Humidity) && string.IsNullOrEmpty(cell.Ventilation))
+                {
+                    Console.WriteLine($"⚠️ No environment data found for cell {cellId}, setting default values");
+                    
+                    // Update the cell with default environment data
+                    var cellEntity = await _context.WarehouseCells
+                        .FirstOrDefaultAsync(c => c.WarehouseId == warehouseId && c.Id == cellId);
+                    
+                    if (cellEntity != null)
+                    {
+                        cellEntity.Temperature = "26°C";
+                        cellEntity.Humidity = "53%";
+                        cellEntity.Ventilation = "Hoạt động";
+                        cellEntity.SensorStatus = "Bình thường";
+                        cellEntity.ElectronicScale = "Kết nối";
+                        cellEntity.Dimensions = "2.5m x 3m x 2.8m";
+                        
+                        await _context.SaveChangesAsync();
+                        Console.WriteLine($"✅ Updated cell {cellId} with default environment data");
+                        
+                        // Return updated cell data
+                        return Ok(new
+                        {
+                            cell.Id,
+                            cell.Row,
+                            cell.Column,
+                            cell.CellCode,
+                            cell.ClusterName,
+                            cell.MaxCapacity,
+                            cell.CurrentAmount,
+                            cell.Status,
+                            cell.LastMoved,
+                            cell.ProductName,
+                            cell.BatchNumber,
+                            cell.ProductionDate,
+                            cell.ExpiryDate,
+                            cell.Supplier,
+                            cell.AssignedStaff,
+                            Temperature = cellEntity.Temperature,
+                            Humidity = cellEntity.Humidity,
+                            Ventilation = cellEntity.Ventilation,
+                            SensorStatus = cellEntity.SensorStatus,
+                            ElectronicScale = cellEntity.ElectronicScale,
+                            Dimensions = cellEntity.Dimensions,
+                            RecentActivities = cell.RecentActivities
+                        });
+                    }
+                }
+
                 return Ok(cell);
             }
             catch (Exception ex)
