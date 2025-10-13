@@ -5,6 +5,7 @@ using FertilizerWarehouseAPI.Models;
 using FertilizerWarehouseAPI.Models.DTOs;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using System.ComponentModel.DataAnnotations;
 
 namespace FertilizerWarehouseAPI.Controllers
 {
@@ -66,6 +67,37 @@ namespace FertilizerWarehouseAPI.Controllers
         {
             try
             {
+                // Validate request data
+                if (request == null)
+                {
+                    return BadRequest(new { success = false, message = "Dữ liệu yêu cầu không hợp lệ" });
+                }
+
+                if (string.IsNullOrEmpty(request.Type))
+                {
+                    return BadRequest(new { success = false, message = "Loại nghỉ phép không được để trống" });
+                }
+
+                if (string.IsNullOrEmpty(request.Reason))
+                {
+                    return BadRequest(new { success = false, message = "Lý do nghỉ phép không được để trống" });
+                }
+
+                if (request.StartDate >= request.EndDate)
+                {
+                    return BadRequest(new { success = false, message = "Ngày bắt đầu phải nhỏ hơn ngày kết thúc" });
+                }
+
+                if (request.StartDate < DateTime.Today)
+                {
+                    return BadRequest(new { success = false, message = "Ngày bắt đầu không được nhỏ hơn ngày hiện tại" });
+                }
+
+                if (request.TotalDays <= 0)
+                {
+                    return BadRequest(new { success = false, message = "Số ngày nghỉ phải lớn hơn 0" });
+                }
+
                 // Use first user as default for testing
                 var firstUser = await _context.Users.FirstOrDefaultAsync();
                 if (firstUser == null)
@@ -73,14 +105,21 @@ namespace FertilizerWarehouseAPI.Controllers
                     return BadRequest(new { success = false, message = "Không tìm thấy người dùng nào trong hệ thống" });
                 }
 
+                // Calculate total days if not provided
+                var totalDays = request.TotalDays;
+                if (totalDays <= 0)
+                {
+                    totalDays = (int)(request.EndDate - request.StartDate).TotalDays + 1;
+                }
+
                 var leaveRequest = new LeaveRequestModel
                 {
                     UserId = firstUser.Id,
-                    Type = request.Type,
+                    Type = request.Type.Trim(),
                     StartDate = request.StartDate,
                     EndDate = request.EndDate,
-                    TotalDays = request.TotalDays,
-                    Reason = request.Reason,
+                    TotalDays = totalDays,
+                    Reason = request.Reason.Trim(),
                     Status = "pending",
                     RequestDate = DateTime.Now,
                     CreatedAt = DateTime.Now
@@ -89,7 +128,20 @@ namespace FertilizerWarehouseAPI.Controllers
                 _context.LeaveRequests.Add(leaveRequest);
                 await _context.SaveChangesAsync();
 
-                return Ok(new { success = true, message = "Tạo đơn xin phép thành công", data = new { id = leaveRequest.Id } });
+                return Ok(new { 
+                    success = true, 
+                    message = "Tạo đơn xin phép thành công", 
+                    data = new { 
+                        id = leaveRequest.Id,
+                        type = leaveRequest.Type,
+                        startDate = leaveRequest.StartDate.ToString("yyyy-MM-dd"),
+                        endDate = leaveRequest.EndDate.ToString("yyyy-MM-dd"),
+                        totalDays = leaveRequest.TotalDays,
+                        reason = leaveRequest.Reason,
+                        status = leaveRequest.Status,
+                        requestDate = leaveRequest.RequestDate.ToString("yyyy-MM-dd")
+                    }
+                });
             }
             catch (Exception ex)
             {
@@ -343,10 +395,21 @@ namespace FertilizerWarehouseAPI.Controllers
 
     public class CreateLeaveRequestDto
     {
+        [Required(ErrorMessage = "Loại nghỉ phép không được để trống")]
+        [MaxLength(100, ErrorMessage = "Loại nghỉ phép không được vượt quá 100 ký tự")]
         public string Type { get; set; } = string.Empty;
+        
+        [Required(ErrorMessage = "Ngày bắt đầu không được để trống")]
         public DateTime StartDate { get; set; }
+        
+        [Required(ErrorMessage = "Ngày kết thúc không được để trống")]
         public DateTime EndDate { get; set; }
+        
+        [Range(1, 365, ErrorMessage = "Số ngày nghỉ phải từ 1 đến 365 ngày")]
         public int TotalDays { get; set; }
+        
+        [Required(ErrorMessage = "Lý do nghỉ phép không được để trống")]
+        [MaxLength(500, ErrorMessage = "Lý do nghỉ phép không được vượt quá 500 ký tự")]
         public string Reason { get; set; } = string.Empty;
     }
 
