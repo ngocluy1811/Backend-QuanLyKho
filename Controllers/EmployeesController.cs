@@ -265,6 +265,18 @@ namespace FertilizerWarehouseAPI.Controllers
             {
                 Console.WriteLine($"🚀 UpdateEmployee called with ID: {id}");
                 
+                // Debug: Log raw request body
+                Console.WriteLine($"🔍 Raw DTO object: {System.Text.Json.JsonSerializer.Serialize(updateDto)}");
+                
+                // Debug: Check if Password field exists in the DTO
+                var passwordField = updateDto.GetType().GetProperty("Password");
+                Console.WriteLine($"🔍 Password field exists: {passwordField != null}");
+                if (passwordField != null)
+                {
+                    var passwordValue = passwordField.GetValue(updateDto);
+                    Console.WriteLine($"🔍 Password value: {passwordValue}");
+                }
+                
                 if (updateDto == null)
                 {
                     Console.WriteLine("❌ UpdateDto is null");
