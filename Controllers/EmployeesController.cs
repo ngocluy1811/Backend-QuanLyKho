@@ -318,7 +318,7 @@ namespace FertilizerWarehouseAPI.Controllers
                 
                 // Try dynamic access to password property
                 var dtoDynamic = dto as dynamic;
-                var passwordValue = dtoDynamic?.password ?? dtoDynamic?.Password ?? dtoDynamic?.PasswordField;
+                var passwordValue = dtoDynamic?.password ?? dtoDynamic?.Password;
                 
                 return Ok(new
                 {
@@ -399,13 +399,13 @@ namespace FertilizerWarehouseAPI.Controllers
                 if (employee == null)
                     return NotFound(new { message = "Employee not found" });
                 
-                // Check if PasswordField property exists and has value
-                var passwordProp = updateDto.GetType().GetProperty("PasswordField");
-                Console.WriteLine($"🔍 PasswordField property exists: {passwordProp != null}");
+                // Check if Password property exists and has value
+                var passwordProp = updateDto.GetType().GetProperty("Password");
+                Console.WriteLine($"🔍 Password property exists: {passwordProp != null}");
                 if (passwordProp != null)
                 {
                     var passwordValue = passwordProp.GetValue(updateDto);
-                    Console.WriteLine($"🔍 PasswordField value from property: {passwordValue}");
+                    Console.WriteLine($"🔍 Password value from property: {passwordValue}");
                     
                     // Check if password is provided and not empty
                     if (passwordValue is string newPassword && !string.IsNullOrEmpty(newPassword))
@@ -423,14 +423,25 @@ namespace FertilizerWarehouseAPI.Controllers
                 }
                 else
                 {
-                    Console.WriteLine($"❌ PasswordField property not found in DTO");
+                    Console.WriteLine($"❌ Password property not found in DTO");
                 }
 
                 // Update basic fields
                 if (!string.IsNullOrEmpty(updateDto.FullName))
                     employee.FullName = updateDto.FullName;
                 if (!string.IsNullOrEmpty(updateDto.Email))
+                {
+                    // Check if email is being changed and if new email already exists
+                    if (employee.Email != updateDto.Email)
+                    {
+                        var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == updateDto.Email && u.Id != id);
+                        if (existingUser != null)
+                        {
+                            return BadRequest(new { message = "Email đã được sử dụng bởi người dùng khác" });
+                        }
+                    }
                     employee.Email = updateDto.Email;
+                }
                 if (!string.IsNullOrEmpty(updateDto.Phone))
                     employee.Phone = updateDto.Phone;
                 if (!string.IsNullOrEmpty(updateDto.Address))
