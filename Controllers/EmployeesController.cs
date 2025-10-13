@@ -282,6 +282,36 @@ namespace FertilizerWarehouseAPI.Controllers
         }
 
         /// <summary>
+        /// Test endpoint to verify password hashing
+        /// </summary>
+        [HttpPost("test-password-hash")]
+        public ActionResult<object> TestPasswordHash([FromBody] TestPasswordRequest request)
+        {
+            try
+            {
+                var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
+                var isValid = BCrypt.Net.BCrypt.Verify(request.Password, hashedPassword);
+                
+                return Ok(new
+                {
+                    originalPassword = request.Password,
+                    hashedPassword = hashedPassword,
+                    isValid = isValid,
+                    message = "Password hashing test completed"
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error", error = ex.Message });
+            }
+        }
+
+        public class TestPasswordRequest
+        {
+            public string Password { get; set; } = string.Empty;
+        }
+
+        /// <summary>
         /// Update employee
         /// </summary>
         [HttpPut("{id}")]
