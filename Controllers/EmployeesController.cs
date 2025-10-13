@@ -352,9 +352,15 @@ namespace FertilizerWarehouseAPI.Controllers
                 
                 // Update password if provided (using reflection)
                 var passwordProperty = updateDto.GetType().GetProperty("Password");
+                Console.WriteLine($"🔍 Password property found: {passwordProperty != null}");
                 if (passwordProperty != null)
                 {
                     var passwordValue = passwordProperty.GetValue(updateDto);
+                    Console.WriteLine($"🔍 Password value: {passwordValue}");
+                    Console.WriteLine($"🔍 Password value type: {passwordValue?.GetType()}");
+                    Console.WriteLine($"🔍 Password is string: {passwordValue is string}");
+                    Console.WriteLine($"🔍 Password is not null or empty: {passwordValue is string newPassword && !string.IsNullOrEmpty(newPassword)}");
+                    
                     if (passwordValue is string newPassword && !string.IsNullOrEmpty(newPassword))
                     {
                         // Hash the new password
@@ -362,13 +368,17 @@ namespace FertilizerWarehouseAPI.Controllers
                         employee.MustChangePassword = true; // Force user to change password on next login
                         
                         // Log password update for debugging
-                        Console.WriteLine($"Password updated for user {employee.Username}");
+                        Console.WriteLine($"✅ Password updated for user {employee.Username} - New hash: {employee.PasswordHash.Substring(0, 20)}...");
                     }
                     else
                     {
                         // Log that password was not updated (empty or null)
-                        Console.WriteLine($"Password not updated for user {employee.Username} - password was empty or null");
+                        Console.WriteLine($"❌ Password not updated for user {employee.Username} - password was empty or null");
                     }
+                }
+                else
+                {
+                    Console.WriteLine($"❌ Password property not found in DTO");
                 }
                 
                 employee.IsActive = updateDto.IsActive;
