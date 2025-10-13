@@ -569,12 +569,16 @@ namespace FertilizerWarehouseAPI.Controllers
                     .Distinct()
                     .ToListAsync();
 
-                // Get all statuses in this warehouse
-                var statuses = await _context.WarehouseCells
-                    .Where(c => c.WarehouseId == warehouseId)
-                    .Select(c => c.Status)
-                    .Distinct()
-                    .ToListAsync();
+                // Get status categories based on capacity
+                var statusCategories = new[]
+                {
+                    new { value = "empty", label = "Trống (0%)", color = "gray", minCapacity = 0, maxCapacity = 0 },
+                    new { value = "low", label = "Thấp (10-39%)", color = "green", minCapacity = 10, maxCapacity = 39 },
+                    new { value = "medium", label = "Trung bình (40-69%)", color = "blue", minCapacity = 40, maxCapacity = 69 },
+                    new { value = "high", label = "Cao (70-89%)", color = "yellow", minCapacity = 70, maxCapacity = 89 },
+                    new { value = "full", label = "Đầy (90-100%)", color = "red", minCapacity = 90, maxCapacity = 100 },
+                    new { value = "warning", label = "Cảnh báo (>95%)", color = "red", minCapacity = 95, maxCapacity = 100 }
+                };
 
                 // Get capacity ranges
                 var capacityRanges = new[]
@@ -587,7 +591,7 @@ namespace FertilizerWarehouseAPI.Controllers
                 return Ok(new
                 {
                     products = products.Select(p => new { value = p, label = p }),
-                    statuses = statuses.Select(s => new { value = s, label = s }),
+                    statuses = statusCategories,
                     capacityRanges
                 });
             }
