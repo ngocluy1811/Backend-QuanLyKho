@@ -168,6 +168,14 @@ namespace FertilizerWarehouseAPI.Controllers
                 if (existingUser)
                     return BadRequest(new { message = "Username already exists" });
 
+                // Check if email already exists
+                if (!string.IsNullOrEmpty(createDto.Email))
+                {
+                    var existingEmail = await _context.Users.AnyAsync(u => u.Email == createDto.Email);
+                    if (existingEmail)
+                        return BadRequest(new { message = "Email already exists" });
+                }
+
                 // Parse role string to enum
                 if (!Enum.TryParse<UserRole>(createDto.Role, true, out var userRole))
                 {
@@ -356,16 +364,8 @@ namespace FertilizerWarehouseAPI.Controllers
                 // Debug: Log raw request body
                 Console.WriteLine($"🔍 Raw DTO object: {System.Text.Json.JsonSerializer.Serialize(updateDto)}");
                 
-                // Debug: Try to read raw request body
-                try
-                {
-                    var requestBody = await new StreamReader(Request.Body).ReadToEndAsync();
-                    Console.WriteLine($"🔍 Raw request body: {requestBody}");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"🔍 Error reading request body: {ex.Message}");
-                }
+                // Debug: Request body already consumed by model binding
+                Console.WriteLine($"🔍 Request body already consumed by model binding");
                 
                 // Debug: Check if password field exists in JSON
                 var jsonString = System.Text.Json.JsonSerializer.Serialize(updateDto);
