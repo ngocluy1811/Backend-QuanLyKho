@@ -356,6 +356,17 @@ namespace FertilizerWarehouseAPI.Controllers
                 // Debug: Log raw request body
                 Console.WriteLine($"🔍 Raw DTO object: {System.Text.Json.JsonSerializer.Serialize(updateDto)}");
                 
+                // Debug: Try to read raw request body
+                try
+                {
+                    var requestBody = await new StreamReader(Request.Body).ReadToEndAsync();
+                    Console.WriteLine($"🔍 Raw request body: {requestBody}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"🔍 Error reading request body: {ex.Message}");
+                }
+                
                 // Debug: Check if password field exists in JSON
                 var jsonString = System.Text.Json.JsonSerializer.Serialize(updateDto);
                 Console.WriteLine($"🔍 JSON contains 'password': {jsonString.Contains("\"password\"")}");
