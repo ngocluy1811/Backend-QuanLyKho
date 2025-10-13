@@ -610,6 +610,9 @@ namespace FertilizerWarehouseAPI.Controllers
                 var cell = await _context.WarehouseCells
                     .FirstOrDefaultAsync(c => c.WarehouseId == warehouseId && c.Id == cellId);
 
+                // Debug: Log current database values BEFORE update
+                Console.WriteLine($"🔍 BEFORE UPDATE - Database values: Temperature={cell?.Temperature}, Humidity={cell?.Humidity}, Ventilation={cell?.Ventilation}, SensorStatus={cell?.SensorStatus}, ElectronicScale={cell?.ElectronicScale}, Dimensions={cell?.Dimensions}");
+
                 if (cell == null)
                 {
                     Console.WriteLine($"❌ Cell not found: WarehouseId={warehouseId}, CellId={cellId}");
@@ -647,6 +650,11 @@ namespace FertilizerWarehouseAPI.Controllers
                 await _context.SaveChangesAsync();
 
                 Console.WriteLine($"✅ Cell updated successfully: Temperature={cell.Temperature}, Humidity={cell.Humidity}, Ventilation={cell.Ventilation}, SensorStatus={cell.SensorStatus}, ElectronicScale={cell.ElectronicScale}, Dimensions={cell.Dimensions}");
+
+                // Debug: Verify data was actually saved to database
+                var verifyCell = await _context.WarehouseCells
+                    .FirstOrDefaultAsync(c => c.WarehouseId == warehouseId && c.Id == cellId);
+                Console.WriteLine($"🔍 AFTER SAVE - Database values: Temperature={verifyCell?.Temperature}, Humidity={verifyCell?.Humidity}, Ventilation={verifyCell?.Ventilation}, SensorStatus={verifyCell?.SensorStatus}, ElectronicScale={verifyCell?.ElectronicScale}, Dimensions={verifyCell?.Dimensions}");
 
                 return Ok(new { message = "Cell updated successfully" });
             }
