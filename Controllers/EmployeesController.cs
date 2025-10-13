@@ -356,6 +356,11 @@ namespace FertilizerWarehouseAPI.Controllers
                 // Debug: Log raw request body
                 Console.WriteLine($"🔍 Raw DTO object: {System.Text.Json.JsonSerializer.Serialize(updateDto)}");
                 
+                // Debug: Check if password field exists in JSON
+                var jsonString = System.Text.Json.JsonSerializer.Serialize(updateDto);
+                Console.WriteLine($"🔍 JSON contains 'password': {jsonString.Contains("\"password\"")}");
+                Console.WriteLine($"🔍 JSON contains 'Password': {jsonString.Contains("\"Password\"")}");
+                
                 // Debug: Check if Password field exists in the DTO
                 var passwordField = updateDto.GetType().GetProperty("Password");
                 Console.WriteLine($"🔍 Password field exists: {passwordField != null}");
