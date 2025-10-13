@@ -316,15 +316,17 @@ namespace FertilizerWarehouseAPI.Controllers
             {
                 Console.WriteLine($"🔍 Test DTO received: {System.Text.Json.JsonSerializer.Serialize(dto)}");
                 
-                var passwordField = dto.GetType().GetProperty("Password");
-                var passwordValue = passwordField?.GetValue(dto);
+                // Try direct access to Password property
+                var passwordValue = dto.Password;
                 
                 return Ok(new
                 {
                     dtoType = dto.GetType().FullName,
                     dtoProperties = dto.GetType().GetProperties().Select(p => p.Name).ToArray(),
-                    passwordFieldExists = passwordField != null,
+                    passwordFieldExists = true, // We know it exists in the class
                     passwordValue = passwordValue,
+                    passwordIsNull = passwordValue == null,
+                    passwordIsEmpty = string.IsNullOrEmpty(passwordValue),
                     message = "DTO deserialization test completed"
                 });
             }

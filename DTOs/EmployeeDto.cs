@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace FertilizerWarehouseAPI.DTOs;
 
@@ -87,22 +88,25 @@ public class CreateEmployeeDto
     public string? Notes { get; set; }
 }
 
-public class UpdateEmployeeDto
-{
-    public string Username { get; set; } = string.Empty;
-    public string FullName { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string Phone { get; set; } = string.Empty;
-    public string Address { get; set; } = string.Empty;
-    public string Position { get; set; } = string.Empty;
-    public string? Password { get; set; } // Optional password field for updates
-    public int? DepartmentId { get; set; }
-    public int? CompanyId { get; set; }
-    public int? Level { get; set; }
-    public string Role { get; set; } = string.Empty;
-    public bool IsActive { get; set; }
-    public bool? MustChangePassword { get; set; }
-    public bool? TwoFactorEnabled { get; set; }
-    public DateTime? LockedUntil { get; set; }
-    public DateTime? PasswordExpiresAt { get; set; }
-}
+    public class UpdateEmployeeDto
+    {
+        public string Username { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
+        public string Address { get; set; } = string.Empty;
+        public string Position { get; set; } = string.Empty;
+        
+        [JsonPropertyName("password")]
+        public string? Password { get; set; } // Optional password field for updates
+        
+        public int? DepartmentId { get; set; }
+        public int? CompanyId { get; set; }
+        public int? Level { get; set; }
+        public string Role { get; set; } = string.Empty;
+        public bool IsActive { get; set; }
+        public bool? MustChangePassword { get; set; }
+        public bool? TwoFactorEnabled { get; set; }
+        public DateTime? LockedUntil { get; set; }
+        public DateTime? PasswordExpiresAt { get; set; }
+    }
