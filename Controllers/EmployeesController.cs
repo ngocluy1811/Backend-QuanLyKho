@@ -350,6 +350,27 @@ namespace FertilizerWarehouseAPI.Controllers
                     }
                 }
                 
+                // Update password if provided (using reflection)
+                var passwordProperty = updateDto.GetType().GetProperty("Password");
+                if (passwordProperty != null)
+                {
+                    var passwordValue = passwordProperty.GetValue(updateDto);
+                    if (passwordValue is string newPassword && !string.IsNullOrEmpty(newPassword))
+                    {
+                        // Hash the new password
+                        employee.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+                        employee.MustChangePassword = true; // Force user to change password on next login
+                        
+                        // Log password update for debugging
+                        Console.WriteLine($"Password updated for user {employee.Username}");
+                    }
+                    else
+                    {
+                        // Log that password was not updated (empty or null)
+                        Console.WriteLine($"Password not updated for user {employee.Username} - password was empty or null");
+                    }
+                }
+                
                 employee.IsActive = updateDto.IsActive;
 
                 // Update timestamp

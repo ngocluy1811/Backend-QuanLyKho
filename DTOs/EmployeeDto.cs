@@ -95,6 +95,7 @@ public class UpdateEmployeeDto
     public string Phone { get; set; } = string.Empty;
     public string Address { get; set; } = string.Empty;
     public string Position { get; set; } = string.Empty;
+    public string? Password { get; set; } // Optional password field for updates
     public int? DepartmentId { get; set; }
     public int? CompanyId { get; set; }
     public int? Level { get; set; }
