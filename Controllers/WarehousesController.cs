@@ -573,11 +573,11 @@ namespace FertilizerWarehouseAPI.Controllers
                 var statusCategories = new[]
                 {
                     new { value = "empty", label = "Trống (0%)", color = "gray", minCapacity = 0, maxCapacity = 0 },
-                    new { value = "low", label = "Thấp (10-39%)", color = "green", minCapacity = 10, maxCapacity = 39 },
+                    new { value = "low", label = "Còn trống nhiều (<40%)", color = "green", minCapacity = 1, maxCapacity = 39 },
                     new { value = "medium", label = "Trung bình (40-69%)", color = "blue", minCapacity = 40, maxCapacity = 69 },
-                    new { value = "high", label = "Cao (70-89%)", color = "yellow", minCapacity = 70, maxCapacity = 89 },
-                    new { value = "full", label = "Đầy (90-100%)", color = "red", minCapacity = 90, maxCapacity = 100 },
-                    new { value = "warning", label = "Cảnh báo (>95%)", color = "red", minCapacity = 95, maxCapacity = 100 }
+                    new { value = "high", label = "Gần đầy (70-80%)", color = "yellow", minCapacity = 70, maxCapacity = 80 },
+                    new { value = "full", label = "Đầy (>80%)", color = "orange", minCapacity = 81, maxCapacity = 99 },
+                    new { value = "warning", label = "Cảnh báo (100%)", color = "red", minCapacity = 100, maxCapacity = 100 }
                 };
 
                 // Get capacity ranges

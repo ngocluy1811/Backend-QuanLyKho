@@ -67,43 +67,56 @@ namespace FertilizerWarehouseAPI.Controllers
         {
             try
             {
+                Console.WriteLine("🔍 CreateLeaveRequest called");
+                Console.WriteLine($"📝 Request data: {System.Text.Json.JsonSerializer.Serialize(request)}");
+                
                 // Validate request data
                 if (request == null)
                 {
+                    Console.WriteLine("❌ Request is null");
                     return BadRequest(new { success = false, message = "Dữ liệu yêu cầu không hợp lệ" });
                 }
 
                 if (string.IsNullOrEmpty(request.Type))
                 {
+                    Console.WriteLine("❌ Type is empty");
                     return BadRequest(new { success = false, message = "Loại nghỉ phép không được để trống" });
                 }
 
                 if (string.IsNullOrEmpty(request.Reason))
                 {
+                    Console.WriteLine("❌ Reason is empty");
                     return BadRequest(new { success = false, message = "Lý do nghỉ phép không được để trống" });
                 }
 
                 if (request.StartDate >= request.EndDate)
                 {
+                    Console.WriteLine($"❌ StartDate {request.StartDate} >= EndDate {request.EndDate}");
                     return BadRequest(new { success = false, message = "Ngày bắt đầu phải nhỏ hơn ngày kết thúc" });
                 }
 
-                if (request.StartDate < DateTime.Today)
+                // Allow today as start date
+                if (request.StartDate < DateTime.UtcNow.Date)
                 {
+                    Console.WriteLine($"❌ StartDate {request.StartDate} < Today {DateTime.UtcNow.Date}");
                     return BadRequest(new { success = false, message = "Ngày bắt đầu không được nhỏ hơn ngày hiện tại" });
                 }
 
                 if (request.TotalDays <= 0)
                 {
+                    Console.WriteLine($"❌ TotalDays {request.TotalDays} <= 0");
                     return BadRequest(new { success = false, message = "Số ngày nghỉ phải lớn hơn 0" });
                 }
 
                 // Use first user as default for testing
+                Console.WriteLine("🔍 Looking for first user...");
                 var firstUser = await _context.Users.FirstOrDefaultAsync();
                 if (firstUser == null)
                 {
+                    Console.WriteLine("❌ No users found in database");
                     return BadRequest(new { success = false, message = "Không tìm thấy người dùng nào trong hệ thống" });
                 }
+                Console.WriteLine($"✅ Found user: {firstUser.Id} - {firstUser.FullName}");
 
                 // Calculate total days if not provided
                 var totalDays = request.TotalDays;
@@ -111,22 +124,29 @@ namespace FertilizerWarehouseAPI.Controllers
                 {
                     totalDays = (int)(request.EndDate - request.StartDate).TotalDays + 1;
                 }
+                Console.WriteLine($"📅 Calculated total days: {totalDays}");
 
+                Console.WriteLine("🔍 Creating leave request object...");
                 var leaveRequest = new LeaveRequestModel
                 {
                     UserId = firstUser.Id,
                     Type = request.Type.Trim(),
-                    StartDate = request.StartDate,
-                    EndDate = request.EndDate,
+                    StartDate = request.StartDate.ToUniversalTime(),
+                    EndDate = request.EndDate.ToUniversalTime(),
                     TotalDays = totalDays,
                     Reason = request.Reason.Trim(),
                     Status = "pending",
-                    RequestDate = DateTime.Now,
-                    CreatedAt = DateTime.Now
+                    RequestDate = DateTime.UtcNow,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = null
                 };
 
+                Console.WriteLine("🔍 Adding to context...");
                 _context.LeaveRequests.Add(leaveRequest);
+                
+                Console.WriteLine("🔍 Saving to database...");
                 await _context.SaveChangesAsync();
+                Console.WriteLine("✅ Successfully saved to database");
 
                 return Ok(new { 
                     success = true, 
@@ -145,6 +165,8 @@ namespace FertilizerWarehouseAPI.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"💥 Exception in CreateLeaveRequest: {ex.Message}");
+                Console.WriteLine($"💥 Stack trace: {ex.StackTrace}");
                 return StatusCode(500, new { success = false, message = "Lỗi khi tạo đơn xin phép", error = ex.Message });
             }
         }
@@ -239,7 +261,7 @@ namespace FertilizerWarehouseAPI.Controllers
                 leaveRequest.EndDate = request.EndDate;
                 leaveRequest.TotalDays = request.TotalDays;
                 leaveRequest.Reason = request.Reason;
-                leaveRequest.UpdatedAt = DateTime.Now;
+                leaveRequest.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
 
@@ -318,9 +340,9 @@ namespace FertilizerWarehouseAPI.Controllers
 
                 leaveRequest.Status = "approved";
                 leaveRequest.ApprovedBy = adminUser.Id;
-                leaveRequest.ApprovedDate = DateTime.Now;
+                leaveRequest.ApprovedDate = DateTime.UtcNow;
                 leaveRequest.Comments = request.Comments;
-                leaveRequest.UpdatedAt = DateTime.Now;
+                leaveRequest.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
 
@@ -359,9 +381,9 @@ namespace FertilizerWarehouseAPI.Controllers
 
                 leaveRequest.Status = "rejected";
                 leaveRequest.ApprovedBy = adminUser.Id;
-                leaveRequest.ApprovedDate = DateTime.Now;
+                leaveRequest.ApprovedDate = DateTime.UtcNow;
                 leaveRequest.Comments = request.Comments;
-                leaveRequest.UpdatedAt = DateTime.Now;
+                leaveRequest.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
 
