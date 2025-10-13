@@ -316,8 +316,9 @@ namespace FertilizerWarehouseAPI.Controllers
             {
                 Console.WriteLine($"🔍 Test DTO received: {System.Text.Json.JsonSerializer.Serialize(dto)}");
                 
-                // Try direct access to Password property
-                var passwordValue = dto.Password;
+                // Try dynamic access to password property
+                var dtoDynamic = dto as dynamic;
+                var passwordValue = dtoDynamic?.password ?? dtoDynamic?.Password ?? dtoDynamic?.PasswordField;
                 
                 return Ok(new
                 {

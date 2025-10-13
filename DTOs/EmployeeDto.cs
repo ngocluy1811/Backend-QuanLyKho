@@ -97,8 +97,11 @@ public class CreateEmployeeDto
         public string Address { get; set; } = string.Empty;
         public string Position { get; set; } = string.Empty;
         
-        [JsonPropertyName("password")]
+        [JsonIgnore]
         public string? Password { get; set; } // Optional password field for updates
+        
+        [JsonPropertyName("password")]
+        public string? PasswordField { get; set; } // JSON field for password
         
         public int? DepartmentId { get; set; }
         public int? CompanyId { get; set; }
