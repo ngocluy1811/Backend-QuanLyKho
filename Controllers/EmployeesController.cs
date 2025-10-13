@@ -359,7 +359,7 @@ namespace FertilizerWarehouseAPI.Controllers
                     Console.WriteLine($"🔍 Password value: {passwordValue}");
                     Console.WriteLine($"🔍 Password value type: {passwordValue?.GetType()}");
                     Console.WriteLine($"🔍 Password is string: {passwordValue is string}");
-                    Console.WriteLine($"🔍 Password is not null or empty: {passwordValue is string newPassword && !string.IsNullOrEmpty(newPassword)}");
+                    Console.WriteLine($"🔍 Password is not null or empty: {passwordValue is string && !string.IsNullOrEmpty(passwordValue as string)}");
                     
                     if (passwordValue is string newPassword && !string.IsNullOrEmpty(newPassword))
                     {
