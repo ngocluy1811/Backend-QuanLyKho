@@ -345,7 +345,7 @@ namespace FertilizerWarehouseAPI.Controllers
     }
 
         /// <summary>
-        /// Update warehouse size
+        /// Update warehouse size with improved validation and error handling
         /// </summary>
         [HttpPut("{id}/size")]
         // [Authorize(Policy = "Warehouse")] // Temporarily disabled for testing
@@ -353,10 +353,32 @@ namespace FertilizerWarehouseAPI.Controllers
         {
             try
             {
+                // Validate input
+                if (request.Width <= 0 || request.Height <= 0)
+                {
+                    return BadRequest(new { message = "Width and Height must be greater than 0" });
+                }
+
+                if (request.Width > 50 || request.Height > 50)
+                {
+                    return BadRequest(new { message = "Width and Height cannot exceed 50" });
+                }
+
                 var warehouse = await _context.Warehouses.FindAsync(id);
                 if (warehouse == null)
                 {
                     return NotFound(new { message = "Warehouse not found" });
+                }
+
+                // Check if size is actually changing
+                if (warehouse.Width == request.Width && warehouse.Height == request.Height)
+                {
+                    return Ok(new
+                    {
+                        message = "Warehouse size is already set to the requested dimensions",
+                        currentSize = $"{warehouse.Width}x{warehouse.Height}",
+                        noChanges = true
+                    });
                 }
 
                 // Get or create default zone
@@ -369,7 +391,11 @@ namespace FertilizerWarehouseAPI.Controllers
                     {
                         WarehouseId = id,
                         ZoneName = "Default Zone",
-                        // Description = "Default zone for all positions", // Property not available
+                        ZoneCode = "DEFAULT",
+                        ZoneType = "Storage",
+                        MaxCapacity = request.Width * request.Height,
+                        CurrentCapacity = 0,
+                        Status = "Active",
                         IsActive = true,
                         CreatedAt = DateTime.UtcNow
                     };
@@ -377,61 +403,16 @@ namespace FertilizerWarehouseAPI.Controllers
                     await _context.SaveChangesAsync();
                 }
 
-                // Update warehouse size
-                warehouse.Width = request.Width;
-                warehouse.Height = request.Height;
-                // warehouse.TotalPositions = request.Width * request.Height; // Read-only property
-                // warehouse.Size = $"{request.Width}x{request.Height}"; // Read-only property
-                warehouse.UpdatedAt = DateTime.UtcNow;
-
                 // Get existing cells
                 var existingCells = await _context.WarehouseCells
-                    .Where(c => c.WarehouseId == id)
+                    .Where(c => c.WarehouseId == id && c.IsActive)
                     .ToListAsync();
 
-                var newCells = new List<WarehouseCell>();
-
-                // Create or update cells
-                for (int row = 1; row <= request.Height; row++)
-                {
-                    for (int col = 1; col <= request.Width; col++)
-                    {
-                        var cellCode = $"{(char)(64 + row)}{col:D2}";
-                        var existingCell = existingCells.FirstOrDefault(c => c.Row == row && c.Column == col);
-
-                        if (existingCell != null)
-                        {
-                            existingCell.CellCode = cellCode;
-                            existingCell.UpdatedAt = DateTime.UtcNow;
-                        }
-                        else
-                        {
-                            var newCell = new WarehouseCell
-                            {
-                                WarehouseId = id,
-                                Row = row,
-                                Column = col,
-                                CellCode = cellCode,
-                                CellType = "Shelf",
-                                MaxCapacity = 1000,
-                                CurrentAmount = 0,
-                                Status = "Empty",
-                                ZoneId = zone.Id,
-                                ClusterName = "Khu vực A",
-                                IsActive = true,
-                                CreatedAt = DateTime.UtcNow
-                            };
-                            newCells.Add(newCell);
-                        }
-                    }
-                }
-
-                // Check cells that will be removed due to size reduction
+                // Check if reducing size and cells have goods
                 var cellsToRemove = existingCells
                     .Where(c => c.Row > request.Height || c.Column > request.Width)
                     .ToList();
 
-                // Check if any cells to be removed have goods
                 var positionsWithGoods = cellsToRemove
                     .Where(c => c.CurrentAmount > 0)
                     .Select(c => new
@@ -455,8 +436,61 @@ namespace FertilizerWarehouseAPI.Controllers
                         suggestion = "Vui lòng chuyển hàng từ các vị trí này trước khi giảm kích thước kho"
                     });
                 }
-                
-                // If no goods, remove cells completely from database
+
+                // Update warehouse dimensions
+                warehouse.Width = request.Width;
+                warehouse.Height = request.Height;
+                warehouse.UpdatedAt = DateTime.UtcNow;
+
+                var newCells = new List<WarehouseCell>();
+                var updatedCells = new List<WarehouseCell>();
+
+                // Create or update cells
+                for (int row = 1; row <= request.Height; row++)
+                {
+                    for (int col = 1; col <= request.Width; col++)
+                    {
+                        var cellCode = $"{(char)(64 + row)}{col:D2}";
+                        var existingCell = existingCells.FirstOrDefault(c => c.Row == row && c.Column == col);
+
+                        if (existingCell != null)
+                        {
+                            // Update existing cell
+                            existingCell.CellCode = cellCode;
+                            existingCell.UpdatedAt = DateTime.UtcNow;
+                            updatedCells.Add(existingCell);
+                        }
+                        else
+                        {
+                            // Create new cell
+                            var newCell = new WarehouseCell
+                            {
+                                WarehouseId = id,
+                                ZoneId = zone.Id,
+                                Row = row,
+                                Column = col,
+                                CellCode = cellCode,
+                                CellType = "Shelf",
+                                MaxCapacity = 1000,
+                                CurrentAmount = 0,
+                                Status = "Empty",
+                                ClusterName = "Khu vực A",
+                                // Initialize environment fields with default values
+                                Temperature = "25°C",
+                                Humidity = "60%",
+                                Ventilation = "Tốt",
+                                SensorStatus = "Hoạt động",
+                                ElectronicScale = "Có",
+                                Dimensions = "2x2x3m",
+                                IsActive = true,
+                                CreatedAt = DateTime.UtcNow
+                            };
+                            newCells.Add(newCell);
+                        }
+                    }
+                }
+
+                // Remove cells that are outside new dimensions
                 if (cellsToRemove.Any())
                 {
                     _context.WarehouseCells.RemoveRange(cellsToRemove);
@@ -469,7 +503,7 @@ namespace FertilizerWarehouseAPI.Controllers
                 }
 
                 // Update zone capacity
-                // zone.Capacity = request.Width * request.Height; // Property not available
+                zone.MaxCapacity = request.Width * request.Height;
                 zone.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
@@ -480,8 +514,9 @@ namespace FertilizerWarehouseAPI.Controllers
                     newSize = $"{request.Width}x{request.Height}",
                     totalPositions = request.Width * request.Height,
                     cellsAdded = newCells.Count,
+                    cellsUpdated = updatedCells.Count,
                     cellsDeleted = cellsToRemove.Count,
-                    action = "Cells with goods were checked and cells without goods were permanently deleted"
+                    zoneUpdated = true
                 });
             }
             catch (Exception ex)
@@ -596,67 +631,190 @@ namespace FertilizerWarehouseAPI.Controllers
         }
 
         /// <summary>
-        /// Update cell details
+        /// Update cell details with improved validation and environment field handling
         /// </summary>
         [HttpPut("{warehouseId}/cells/{cellId}")]
         public async Task<ActionResult<object>> UpdateCell(int warehouseId, int cellId, [FromBody] UpdateCellRequest request)
         {
             try
             {
-                // Debug: Log request data
-                Console.WriteLine($"🔍 UpdateCell request: WarehouseId={warehouseId}, CellId={cellId}");
-                Console.WriteLine($"🔍 Request data: MaxCapacity={request.MaxCapacity}, Temperature={request.Temperature}, Humidity={request.Humidity}, Ventilation={request.Ventilation}, SensorStatus={request.SensorStatus}, ElectronicScale={request.ElectronicScale}, Dimensions={request.Dimensions}");
+                // Validate input
+                if (request.MaxCapacity.HasValue && request.MaxCapacity.Value <= 0)
+                {
+                    return BadRequest(new { message = "MaxCapacity must be greater than 0" });
+                }
+
+                if (request.CurrentCapacity.HasValue && request.CurrentCapacity.Value < 0)
+                {
+                    return BadRequest(new { message = "CurrentCapacity cannot be negative" });
+                }
 
                 var cell = await _context.WarehouseCells
                     .FirstOrDefaultAsync(c => c.WarehouseId == warehouseId && c.Id == cellId);
 
-                // Debug: Log current database values BEFORE update
-                Console.WriteLine($"🔍 BEFORE UPDATE - Database values: Temperature={cell?.Temperature}, Humidity={cell?.Humidity}, Ventilation={cell?.Ventilation}, SensorStatus={cell?.SensorStatus}, ElectronicScale={cell?.ElectronicScale}, Dimensions={cell?.Dimensions}");
-
                 if (cell == null)
                 {
-                    Console.WriteLine($"❌ Cell not found: WarehouseId={warehouseId}, CellId={cellId}");
                     return NotFound(new { message = "Cell not found" });
                 }
 
-                // Update cell properties
+                // Store original values for logging
+                var originalValues = new
+                {
+                    MaxCapacity = cell.MaxCapacity,
+                    CurrentAmount = cell.CurrentAmount,
+                    Status = cell.Status,
+                    Temperature = cell.Temperature,
+                    Humidity = cell.Humidity,
+                    Ventilation = cell.Ventilation,
+                    SensorStatus = cell.SensorStatus,
+                    ElectronicScale = cell.ElectronicScale,
+                    Dimensions = cell.Dimensions
+                };
+
+                // Update basic cell properties
                 if (request.MaxCapacity.HasValue)
+                {
                     cell.MaxCapacity = request.MaxCapacity.Value;
-                if (request.CurrentCapacity.HasValue)
-                    cell.CurrentAmount = request.CurrentCapacity.Value;
-                if (!string.IsNullOrEmpty(request.Status))
-                    cell.Status = request.Status;
-                if (!string.IsNullOrEmpty(request.Zone))
-                    cell.ClusterName = request.Zone;
-                if (!string.IsNullOrEmpty(request.AssignedStaff))
-                    cell.AssignedStaff = request.AssignedStaff;
+                }
                 
-                // Update environment fields
+                if (request.CurrentCapacity.HasValue)
+                {
+                    // Validate capacity doesn't exceed max
+                    if (request.CurrentCapacity.Value > cell.MaxCapacity)
+                    {
+                        return BadRequest(new { 
+                            message = "Current capacity cannot exceed maximum capacity",
+                            maxCapacity = cell.MaxCapacity,
+                            requestedCapacity = request.CurrentCapacity.Value
+                        });
+                    }
+                    cell.CurrentAmount = request.CurrentCapacity.Value;
+                }
+                
+                if (!string.IsNullOrEmpty(request.Status))
+                {
+                    cell.Status = request.Status;
+                }
+                
+                if (!string.IsNullOrEmpty(request.Zone))
+                {
+                    cell.ClusterName = request.Zone;
+                }
+                
+                if (!string.IsNullOrEmpty(request.AssignedStaff))
+                {
+                    cell.AssignedStaff = request.AssignedStaff;
+                }
+                
+                // Update environment fields with validation
                 if (!string.IsNullOrEmpty(request.Temperature))
-                    cell.Temperature = request.Temperature;
+                {
+                    // Basic temperature validation
+                    if (request.Temperature.Length > 50)
+                    {
+                        return BadRequest(new { message = "Temperature value is too long (max 50 characters)" });
+                    }
+                    cell.Temperature = request.Temperature.Trim();
+                }
+                
                 if (!string.IsNullOrEmpty(request.Humidity))
-                    cell.Humidity = request.Humidity;
+                {
+                    if (request.Humidity.Length > 50)
+                    {
+                        return BadRequest(new { message = "Humidity value is too long (max 50 characters)" });
+                    }
+                    cell.Humidity = request.Humidity.Trim();
+                }
+                
                 if (!string.IsNullOrEmpty(request.Ventilation))
-                    cell.Ventilation = request.Ventilation;
+                {
+                    if (request.Ventilation.Length > 50)
+                    {
+                        return BadRequest(new { message = "Ventilation value is too long (max 50 characters)" });
+                    }
+                    cell.Ventilation = request.Ventilation.Trim();
+                }
+                
                 if (!string.IsNullOrEmpty(request.SensorStatus))
-                    cell.SensorStatus = request.SensorStatus;
+                {
+                    if (request.SensorStatus.Length > 50)
+                    {
+                        return BadRequest(new { message = "SensorStatus value is too long (max 50 characters)" });
+                    }
+                    cell.SensorStatus = request.SensorStatus.Trim();
+                }
+                
                 if (!string.IsNullOrEmpty(request.ElectronicScale))
-                    cell.ElectronicScale = request.ElectronicScale;
+                {
+                    if (request.ElectronicScale.Length > 50)
+                    {
+                        return BadRequest(new { message = "ElectronicScale value is too long (max 50 characters)" });
+                    }
+                    cell.ElectronicScale = request.ElectronicScale.Trim();
+                }
+                
                 if (!string.IsNullOrEmpty(request.Dimensions))
-                    cell.Dimensions = request.Dimensions;
+                {
+                    if (request.Dimensions.Length > 100)
+                    {
+                        return BadRequest(new { message = "Dimensions value is too long (max 100 characters)" });
+                    }
+                    cell.Dimensions = request.Dimensions.Trim();
+                }
 
                 cell.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
 
-                Console.WriteLine($"✅ Cell updated successfully: Temperature={cell.Temperature}, Humidity={cell.Humidity}, Ventilation={cell.Ventilation}, SensorStatus={cell.SensorStatus}, ElectronicScale={cell.ElectronicScale}, Dimensions={cell.Dimensions}");
+                // Create activity log for environment changes
+                var environmentChanges = new List<string>();
+                if (originalValues.Temperature != cell.Temperature)
+                    environmentChanges.Add($"Nhiệt độ: {originalValues.Temperature} → {cell.Temperature}");
+                if (originalValues.Humidity != cell.Humidity)
+                    environmentChanges.Add($"Độ ẩm: {originalValues.Humidity} → {cell.Humidity}");
+                if (originalValues.Ventilation != cell.Ventilation)
+                    environmentChanges.Add($"Thông gió: {originalValues.Ventilation} → {cell.Ventilation}");
+                if (originalValues.SensorStatus != cell.SensorStatus)
+                    environmentChanges.Add($"Trạng thái cảm biến: {originalValues.SensorStatus} → {cell.SensorStatus}");
+                if (originalValues.ElectronicScale != cell.ElectronicScale)
+                    environmentChanges.Add($"Cân điện tử: {originalValues.ElectronicScale} → {cell.ElectronicScale}");
+                if (originalValues.Dimensions != cell.Dimensions)
+                    environmentChanges.Add($"Kích thước: {originalValues.Dimensions} → {cell.Dimensions}");
 
-                // Debug: Verify data was actually saved to database
-                var verifyCell = await _context.WarehouseCells
-                    .FirstOrDefaultAsync(c => c.WarehouseId == warehouseId && c.Id == cellId);
-                Console.WriteLine($"🔍 AFTER SAVE - Database values: Temperature={verifyCell?.Temperature}, Humidity={verifyCell?.Humidity}, Ventilation={verifyCell?.Ventilation}, SensorStatus={verifyCell?.SensorStatus}, ElectronicScale={verifyCell?.ElectronicScale}, Dimensions={verifyCell?.Dimensions}");
+                if (environmentChanges.Any())
+                {
+                    var activity = new WarehouseActivity
+                    {
+                        WarehouseId = warehouseId,
+                        CellId = cellId,
+                        ActivityType = "EnvironmentUpdate",
+                        Description = $"Cập nhật thông tin môi trường ô {cell.CellCode}: {string.Join(", ", environmentChanges)}",
+                        UserName = "System",
+                        Timestamp = DateTime.UtcNow,
+                        Status = "Completed"
+                    };
+                    _context.WarehouseActivities.Add(activity);
+                    await _context.SaveChangesAsync();
+                }
 
-                return Ok(new { message = "Cell updated successfully" });
+                return Ok(new { 
+                    message = "Cell updated successfully",
+                    cellId = cell.Id,
+                    cellCode = cell.CellCode,
+                    environmentChanges = environmentChanges.Count,
+                    updatedFields = new
+                    {
+                        MaxCapacity = cell.MaxCapacity,
+                        CurrentAmount = cell.CurrentAmount,
+                        Status = cell.Status,
+                        Temperature = cell.Temperature,
+                        Humidity = cell.Humidity,
+                        Ventilation = cell.Ventilation,
+                        SensorStatus = cell.SensorStatus,
+                        ElectronicScale = cell.ElectronicScale,
+                        Dimensions = cell.Dimensions
+                    }
+                });
             }
             catch (Exception ex)
             {
