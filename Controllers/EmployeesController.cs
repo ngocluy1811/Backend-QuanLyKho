@@ -364,23 +364,6 @@ namespace FertilizerWarehouseAPI.Controllers
                 // Debug: Log raw request body
                 Console.WriteLine($"🔍 Raw DTO object: {System.Text.Json.JsonSerializer.Serialize(updateDto)}");
                 
-                // Debug: Request body already consumed by model binding
-                Console.WriteLine($"🔍 Request body already consumed by model binding");
-                
-                // Debug: Check if password field exists in JSON
-                var jsonString = System.Text.Json.JsonSerializer.Serialize(updateDto);
-                Console.WriteLine($"🔍 JSON contains 'password': {jsonString.Contains("\"password\"")}");
-                Console.WriteLine($"🔍 JSON contains 'Password': {jsonString.Contains("\"Password\"")}");
-                
-                // Debug: Check if Password field exists in the DTO
-                var passwordField = updateDto.GetType().GetProperty("Password");
-                Console.WriteLine($"🔍 Password field exists: {passwordField != null}");
-                if (passwordField != null)
-                {
-                    var passwordValue = passwordField.GetValue(updateDto);
-                    Console.WriteLine($"🔍 Password value: {passwordValue}");
-                }
-                
                 if (updateDto == null)
                 {
                     Console.WriteLine("❌ UpdateDto is null");
@@ -389,57 +372,24 @@ namespace FertilizerWarehouseAPI.Controllers
 
                 // Debug: Log the received DTO
                 Console.WriteLine($"🔍 Received DTO: FullName={updateDto.FullName}");
-                Console.WriteLine($"🔍 DTO Type: {updateDto.GetType().FullName}");
-                Console.WriteLine($"🔍 DTO Properties: {string.Join(", ", updateDto.GetType().GetProperties().Select(p => p.Name))}");
-                
-                // Debug: Try to access Password property using reflection
-                try
-                {
-                    var passwordPropReflection = updateDto.GetType().GetProperty("Password");
-                    if (passwordPropReflection != null)
-                    {
-                        var directPassword = passwordPropReflection.GetValue(updateDto);
-                        Console.WriteLine($"🔍 Direct Password access via reflection: {directPassword}");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"🔍 Password property not found via reflection");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"🔍 Direct Password access failed: {ex.Message}");
-                }
+                Console.WriteLine($"🔍 Password field: {updateDto.Password}");
 
                 var employee = await _context.Users.FindAsync(id);
                 if (employee == null)
                     return NotFound(new { message = "Employee not found" });
                 
-                // Check if Password property exists and has value
-                var passwordProp = updateDto.GetType().GetProperty("Password");
-                Console.WriteLine($"🔍 Password property exists: {passwordProp != null}");
-                if (passwordProp != null)
+                // Check if password is provided and not empty
+                if (!string.IsNullOrEmpty(updateDto.Password))
                 {
-                    var passwordValue = passwordProp.GetValue(updateDto);
-                    Console.WriteLine($"🔍 Password value from property: {passwordValue}");
-                    
-                    // Check if password is provided and not empty
-                    if (passwordValue is string newPassword && !string.IsNullOrEmpty(newPassword))
-                    {
-                        Console.WriteLine($"🔍 Password is not null or empty: {!string.IsNullOrEmpty(newPassword)}");
-                        // Hash the password and update PasswordHash
-                        employee.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
-                        employee.MustChangePassword = true;
-                        Console.WriteLine($"✅ Password updated and hashed");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"🔍 Password is null or empty, skipping password update");
-                    }
+                    Console.WriteLine($"🔍 Password provided, updating password hash");
+                    // Hash the password and update PasswordHash
+                    employee.PasswordHash = BCrypt.Net.BCrypt.HashPassword(updateDto.Password);
+                    employee.MustChangePassword = true;
+                    Console.WriteLine($"✅ Password updated and hashed");
                 }
                 else
                 {
-                    Console.WriteLine($"❌ Password property not found in DTO");
+                    Console.WriteLine($"🔍 No password provided, keeping existing password");
                 }
 
                 // Update basic fields
