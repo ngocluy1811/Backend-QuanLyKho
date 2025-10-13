@@ -555,6 +555,49 @@ namespace FertilizerWarehouseAPI.Controllers
         }
 
         /// <summary>
+        /// Get filter options for warehouse
+        /// </summary>
+        [HttpGet("{warehouseId}/filter-options")]
+        public async Task<ActionResult<object>> GetFilterOptions(int warehouseId)
+        {
+            try
+            {
+                // Get all products in this warehouse
+                var products = await _context.WarehouseCells
+                    .Where(c => c.WarehouseId == warehouseId && !string.IsNullOrEmpty(c.ProductName))
+                    .Select(c => c.ProductName)
+                    .Distinct()
+                    .ToListAsync();
+
+                // Get all statuses in this warehouse
+                var statuses = await _context.WarehouseCells
+                    .Where(c => c.WarehouseId == warehouseId)
+                    .Select(c => c.Status)
+                    .Distinct()
+                    .ToListAsync();
+
+                // Get capacity ranges
+                var capacityRanges = new[]
+                {
+                    new { value = "under50", label = "Dưới 50%", min = 0, max = 49 },
+                    new { value = "50to80", label = "50% - 80%", min = 50, max = 80 },
+                    new { value = "over80", label = "Trên 80%", min = 81, max = 100 }
+                };
+
+                return Ok(new
+                {
+                    products = products.Select(p => new { value = p, label = p }),
+                    statuses = statuses.Select(s => new { value = s, label = s }),
+                    capacityRanges
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while retrieving filter options", error = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Get warehouse cell details
         /// </summary>
         [HttpGet("{warehouseId}/cells/{cellId}")]
@@ -609,18 +652,18 @@ namespace FertilizerWarehouseAPI.Controllers
                     return NotFound(new { message = "Cell not found" });
                 }
 
-                // Debug: Log environment data
-                Console.WriteLine($"🔍 Cell {cellId} environment data: Temperature={cell.Temperature}, Humidity={cell.Humidity}, Ventilation={cell.Ventilation}, SensorStatus={cell.SensorStatus}, ElectronicScale={cell.ElectronicScale}, Dimensions={cell.Dimensions}");
+                // Debug: Log environment data - DISABLED
+                // Console.WriteLine($"🔍 Cell {cellId} environment data: Temperature={cell.Temperature}, Humidity={cell.Humidity}, Ventilation={cell.Ventilation}, SensorStatus={cell.SensorStatus}, ElectronicScale={cell.ElectronicScale}, Dimensions={cell.Dimensions}");
 
-                // Debug: Check if data is null or empty
-                if (string.IsNullOrEmpty(cell.Temperature) && string.IsNullOrEmpty(cell.Humidity) && string.IsNullOrEmpty(cell.Ventilation))
-                {
-                    Console.WriteLine($"⚠️ WARNING: Cell {cellId} has no environment data in database!");
-                }
-                else
-                {
-                    Console.WriteLine($"✅ Cell {cellId} has environment data in database");
-                }
+                // Debug: Check if data is null or empty - DISABLED
+                // if (string.IsNullOrEmpty(cell.Temperature) && string.IsNullOrEmpty(cell.Humidity) && string.IsNullOrEmpty(cell.Ventilation))
+                // {
+                //     Console.WriteLine($"⚠️ WARNING: Cell {cellId} has no environment data in database!");
+                // }
+                // else
+                // {
+                //     Console.WriteLine($"✅ Cell {cellId} has environment data in database");
+                // }
 
                 return Ok(cell);
             }
@@ -638,9 +681,9 @@ namespace FertilizerWarehouseAPI.Controllers
         {
             try
             {
-                // Debug: Log incoming request data
-                Console.WriteLine($"🔍 UPDATE CELL REQUEST - WarehouseId: {warehouseId}, CellId: {cellId}");
-                Console.WriteLine($"🌡️ Environment fields received: Temperature={request.Temperature}, Humidity={request.Humidity}, Ventilation={request.Ventilation}, SensorStatus={request.SensorStatus}, ElectronicScale={request.ElectronicScale}, Dimensions={request.Dimensions}");
+                // Debug: Log incoming request data - DISABLED
+                // Console.WriteLine($"🔍 UPDATE CELL REQUEST - WarehouseId: {warehouseId}, CellId: {cellId}");
+                // Console.WriteLine($"🌡️ Environment fields received: Temperature={request.Temperature}, Humidity={request.Humidity}, Ventilation={request.Ventilation}, SensorStatus={request.SensorStatus}, ElectronicScale={request.ElectronicScale}, Dimensions={request.Dimensions}");
                 // Validate input
                 if (request.MaxCapacity.HasValue && request.MaxCapacity.Value <= 0)
                 {
@@ -712,69 +755,69 @@ namespace FertilizerWarehouseAPI.Controllers
                 // Update environment fields - always update if field is provided (even if empty)
                 if (request.Temperature != null)
                 {
-                    Console.WriteLine($"🌡️ Updating Temperature: {cell.Temperature} -> {request.Temperature}");
+                    // Console.WriteLine($"🌡️ Updating Temperature: {cell.Temperature} -> {request.Temperature}");
                     // Basic temperature validation
                     if (!string.IsNullOrEmpty(request.Temperature) && request.Temperature.Length > 50)
                     {
                         return BadRequest(new { message = "Temperature value is too long (max 50 characters)" });
                     }
                     cell.Temperature = string.IsNullOrEmpty(request.Temperature) ? null : request.Temperature.Trim();
-                    Console.WriteLine($"✅ Temperature updated to: {cell.Temperature}");
+                    // Console.WriteLine($"✅ Temperature updated to: {cell.Temperature}");
                 }
                 
                 if (request.Humidity != null)
                 {
-                    Console.WriteLine($"💧 Updating Humidity: {cell.Humidity} -> {request.Humidity}");
+                    // Console.WriteLine($"💧 Updating Humidity: {cell.Humidity} -> {request.Humidity}");
                     if (!string.IsNullOrEmpty(request.Humidity) && request.Humidity.Length > 50)
                     {
                         return BadRequest(new { message = "Humidity value is too long (max 50 characters)" });
                     }
                     cell.Humidity = string.IsNullOrEmpty(request.Humidity) ? null : request.Humidity.Trim();
-                    Console.WriteLine($"✅ Humidity updated to: {cell.Humidity}");
+                    // Console.WriteLine($"✅ Humidity updated to: {cell.Humidity}");
                 }
                 
                 if (request.Ventilation != null)
                 {
-                    Console.WriteLine($"💨 Updating Ventilation: {cell.Ventilation} -> {request.Ventilation}");
+                    // Console.WriteLine($"💨 Updating Ventilation: {cell.Ventilation} -> {request.Ventilation}");
                     if (!string.IsNullOrEmpty(request.Ventilation) && request.Ventilation.Length > 50)
                     {
                         return BadRequest(new { message = "Ventilation value is too long (max 50 characters)" });
                     }
                     cell.Ventilation = string.IsNullOrEmpty(request.Ventilation) ? null : request.Ventilation.Trim();
-                    Console.WriteLine($"✅ Ventilation updated to: {cell.Ventilation}");
+                    // Console.WriteLine($"✅ Ventilation updated to: {cell.Ventilation}");
                 }
                 
                 if (request.SensorStatus != null)
                 {
-                    Console.WriteLine($"📡 Updating SensorStatus: {cell.SensorStatus} -> {request.SensorStatus}");
+                    // Console.WriteLine($"📡 Updating SensorStatus: {cell.SensorStatus} -> {request.SensorStatus}");
                     if (!string.IsNullOrEmpty(request.SensorStatus) && request.SensorStatus.Length > 50)
                     {
                         return BadRequest(new { message = "SensorStatus value is too long (max 50 characters)" });
                     }
                     cell.SensorStatus = string.IsNullOrEmpty(request.SensorStatus) ? null : request.SensorStatus.Trim();
-                    Console.WriteLine($"✅ SensorStatus updated to: {cell.SensorStatus}");
+                    // Console.WriteLine($"✅ SensorStatus updated to: {cell.SensorStatus}");
                 }
                 
                 if (request.ElectronicScale != null)
                 {
-                    Console.WriteLine($"⚖️ Updating ElectronicScale: {cell.ElectronicScale} -> {request.ElectronicScale}");
+                    // Console.WriteLine($"⚖️ Updating ElectronicScale: {cell.ElectronicScale} -> {request.ElectronicScale}");
                     if (!string.IsNullOrEmpty(request.ElectronicScale) && request.ElectronicScale.Length > 50)
                     {
                         return BadRequest(new { message = "ElectronicScale value is too long (max 50 characters)" });
                     }
                     cell.ElectronicScale = string.IsNullOrEmpty(request.ElectronicScale) ? null : request.ElectronicScale.Trim();
-                    Console.WriteLine($"✅ ElectronicScale updated to: {cell.ElectronicScale}");
+                    // Console.WriteLine($"✅ ElectronicScale updated to: {cell.ElectronicScale}");
                 }
                 
                 if (request.Dimensions != null)
                 {
-                    Console.WriteLine($"📏 Updating Dimensions: {cell.Dimensions} -> {request.Dimensions}");
+                    // Console.WriteLine($"📏 Updating Dimensions: {cell.Dimensions} -> {request.Dimensions}");
                     if (!string.IsNullOrEmpty(request.Dimensions) && request.Dimensions.Length > 100)
                     {
                         return BadRequest(new { message = "Dimensions value is too long (max 100 characters)" });
                     }
                     cell.Dimensions = string.IsNullOrEmpty(request.Dimensions) ? null : request.Dimensions.Trim();
-                    Console.WriteLine($"✅ Dimensions updated to: {cell.Dimensions}");
+                    // Console.WriteLine($"✅ Dimensions updated to: {cell.Dimensions}");
                 }
 
                 cell.UpdatedAt = DateTime.UtcNow;
@@ -812,11 +855,11 @@ namespace FertilizerWarehouseAPI.Controllers
                 // Save all changes in a single transaction
                 await _context.SaveChangesAsync();
 
-                // Debug: Verify data was actually saved to database
-                var verifyCell = await _context.WarehouseCells
-                    .FirstOrDefaultAsync(c => c.WarehouseId == warehouseId && c.Id == cellId);
+                // Debug: Verify data was actually saved to database - DISABLED
+                // var verifyCell = await _context.WarehouseCells
+                //     .FirstOrDefaultAsync(c => c.WarehouseId == warehouseId && c.Id == cellId);
                 
-                Console.WriteLine($"🔍 AFTER SAVE - Database values: Temperature={verifyCell?.Temperature}, Humidity={verifyCell?.Humidity}, Ventilation={verifyCell?.Ventilation}, SensorStatus={verifyCell?.SensorStatus}, ElectronicScale={verifyCell?.ElectronicScale}, Dimensions={verifyCell?.Dimensions}");
+                // Console.WriteLine($"🔍 AFTER SAVE - Database values: Temperature={verifyCell?.Temperature}, Humidity={verifyCell?.Humidity}, Ventilation={verifyCell?.Ventilation}, SensorStatus={verifyCell?.SensorStatus}, ElectronicScale={verifyCell?.ElectronicScale}, Dimensions={verifyCell?.Dimensions}");
 
                 return Ok(new { 
                     message = "Cell updated successfully",
