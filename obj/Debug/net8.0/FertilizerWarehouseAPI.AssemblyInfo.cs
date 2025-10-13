@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FertilizerWarehouseAPI")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+becc16d6efa19328db1daab2102a09665faac4df")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7cb6ea5021b78b1cfc9543e7010dd10ff4d17673")]
 [assembly: System.Reflection.AssemblyProductAttribute("FertilizerWarehouseAPI")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FertilizerWarehouseAPI")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

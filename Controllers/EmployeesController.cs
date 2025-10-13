@@ -268,6 +268,20 @@ namespace FertilizerWarehouseAPI.Controllers
                     return BadRequest(new { message = "Request body cannot be null" });
                 }
 
+                // Debug: Log the received DTO
+                Console.WriteLine($"🔍 Received DTO: FullName={updateDto.FullName}");
+                Console.WriteLine($"🔍 DTO Type: {updateDto.GetType().FullName}");
+                Console.WriteLine($"🔍 DTO Properties: {string.Join(", ", updateDto.GetType().GetProperties().Select(p => p.Name))}");
+                
+                // Debug: Check if Password property exists and has value
+                var passwordProp = updateDto.GetType().GetProperty("Password");
+                Console.WriteLine($"🔍 Password property exists: {passwordProp != null}");
+                if (passwordProp != null)
+                {
+                    var passwordValue = passwordProp.GetValue(updateDto);
+                    Console.WriteLine($"🔍 Password value from property: {passwordValue}");
+                }
+
                 var employee = await _context.Users.FindAsync(id);
                 if (employee == null)
                     return NotFound(new { message = "Employee not found" });
