@@ -17,10 +17,10 @@ public class DashboardController : ControllerBase
             _context = context;
         }
 
-        // GET: api/dashboard/overview
-        [HttpGet("overview")]
+        // GET: api/dashboard/summary
+        [HttpGet("summary")]
         [AllowAnonymous]
-        public async Task<IActionResult> GetOverview()
+        public async Task<IActionResult> GetSummary()
     {
         try
         {
@@ -99,6 +99,14 @@ public class DashboardController : ControllerBase
         {
                 return StatusCode(500, new { success = false, message = "Lỗi khi lấy dữ liệu tổng quan", error = ex.Message });
             }
+        }
+
+        // GET: api/dashboard/overview (alias for summary)
+        [HttpGet("overview")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetOverview()
+        {
+            return await GetSummary();
         }
 
         // GET: api/dashboard/recent-activities
