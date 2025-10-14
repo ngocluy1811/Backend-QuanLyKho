@@ -275,15 +275,36 @@ namespace FertilizerWarehouseAPI.Controllers
 
                 Console.WriteLine($"Check-in request for UserId: {request.UserId}");
                 
+                if (request.UserId <= 0)
+                {
+                    return BadRequest(new { success = false, message = "UserId phải lớn hơn 0" });
+                }
+                
                 // Use provided date or default to today
-                var targetDate = !string.IsNullOrEmpty(request.Date) 
-                    ? DateTime.Parse(request.Date).Date 
-                    : DateTime.Now.Date;
+                DateTime targetDate;
+                try
+                {
+                    targetDate = !string.IsNullOrEmpty(request.Date) 
+                        ? DateTime.Parse(request.Date).Date 
+                        : DateTime.Now.Date;
+                }
+                catch (Exception ex)
+                {
+                    return BadRequest(new { success = false, message = $"Ngày không hợp lệ: {request.Date}", error = ex.Message });
+                }
                 
                 // Use provided time or default to current local time
-                var checkInTime = !string.IsNullOrEmpty(request.CheckInTime) 
-                    ? DateTime.Parse($"{targetDate:yyyy-MM-dd} {request.CheckInTime}")
-                    : DateTime.Now;
+                DateTime checkInTime;
+                try
+                {
+                    checkInTime = !string.IsNullOrEmpty(request.CheckInTime) 
+                        ? DateTime.Parse($"{targetDate:yyyy-MM-dd} {request.CheckInTime}")
+                        : DateTime.Now;
+                }
+                catch (Exception ex)
+                {
+                    return BadRequest(new { success = false, message = $"Thời gian không hợp lệ: {request.CheckInTime}", error = ex.Message });
+                }
                 
                 var existingRecord = await _context.AttendanceRecords
                     .FirstOrDefaultAsync(a => a.UserId == request.UserId && a.Date.Date == targetDate);
@@ -336,15 +357,36 @@ namespace FertilizerWarehouseAPI.Controllers
 
                 Console.WriteLine($"Check-out request for UserId: {request.UserId}");
                 
+                if (request.UserId <= 0)
+                {
+                    return BadRequest(new { success = false, message = "UserId phải lớn hơn 0" });
+                }
+                
                 // Use provided date or default to today
-                var targetDate = !string.IsNullOrEmpty(request.Date) 
-                    ? DateTime.Parse(request.Date).Date 
-                    : DateTime.Now.Date;
+                DateTime targetDate;
+                try
+                {
+                    targetDate = !string.IsNullOrEmpty(request.Date) 
+                        ? DateTime.Parse(request.Date).Date 
+                        : DateTime.Now.Date;
+                }
+                catch (Exception ex)
+                {
+                    return BadRequest(new { success = false, message = $"Ngày không hợp lệ: {request.Date}", error = ex.Message });
+                }
                 
                 // Use provided time or default to current local time
-                var checkOutTime = !string.IsNullOrEmpty(request.CheckOutTime) 
-                    ? DateTime.Parse($"{targetDate:yyyy-MM-dd} {request.CheckOutTime}")
-                    : DateTime.Now;
+                DateTime checkOutTime;
+                try
+                {
+                    checkOutTime = !string.IsNullOrEmpty(request.CheckOutTime) 
+                        ? DateTime.Parse($"{targetDate:yyyy-MM-dd} {request.CheckOutTime}")
+                        : DateTime.Now;
+                }
+                catch (Exception ex)
+                {
+                    return BadRequest(new { success = false, message = $"Thời gian không hợp lệ: {request.CheckOutTime}", error = ex.Message });
+                }
                 
                 var existingRecord = await _context.AttendanceRecords
                     .FirstOrDefaultAsync(a => a.UserId == request.UserId && a.Date.Date == targetDate);
