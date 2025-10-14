@@ -356,9 +356,12 @@ namespace FertilizerWarehouseAPI.Controllers
                 }
 
                 Console.WriteLine($"Check-out request for UserId: {request.UserId}");
+                Console.WriteLine($"Check-out date: {request.Date}");
+                Console.WriteLine($"Check-out time: {request.CheckOutTime}");
                 
                 if (request.UserId <= 0)
                 {
+                    Console.WriteLine($"ERROR: UserId {request.UserId} is not valid");
                     return BadRequest(new { success = false, message = "UserId phải lớn hơn 0" });
                 }
                 
@@ -391,14 +394,22 @@ namespace FertilizerWarehouseAPI.Controllers
                 var existingRecord = await _context.AttendanceRecords
                     .FirstOrDefaultAsync(a => a.UserId == request.UserId && a.Date.Date == targetDate);
 
+                Console.WriteLine($"Looking for record: UserId={request.UserId}, Date={targetDate:yyyy-MM-dd}");
+                Console.WriteLine($"Found record: {existingRecord != null}");
+                
                 if (existingRecord == null)
                 {
+                    Console.WriteLine($"ERROR: No attendance record found for UserId {request.UserId} on {targetDate:yyyy-MM-dd}");
                     return BadRequest(new { success = false, message = $"Chưa chấm công vào ngày {targetDate:yyyy-MM-dd}, không thể chấm công ra" });
                 }
+
+                Console.WriteLine($"Record found - CheckInTime: {existingRecord.CheckInTime}");
+                Console.WriteLine($"Record found - CheckOutTime: {existingRecord.CheckOutTime}");
 
                 // Check if user has checked in (has CheckInTime)
                 if (existingRecord.CheckInTime == null || existingRecord.CheckInTime == DateTime.MinValue)
                 {
+                    Console.WriteLine($"ERROR: User {request.UserId} has not checked in on {targetDate:yyyy-MM-dd}");
                     return BadRequest(new { success = false, message = $"Chưa chấm công vào ngày {targetDate:yyyy-MM-dd}, không thể chấm công ra" });
                 }
 
