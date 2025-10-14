@@ -58,16 +58,18 @@ namespace FertilizerWarehouseAPI.Controllers
                 }
 
                 var records = await query
+                    .Include(a => a.User)
+                    .ThenInclude(u => u.Department)
                     .OrderBy(a => a.Date)
                     .ThenBy(a => a.UserId)
                     .Select(a => new
                     {
                         a.Id,
                         a.UserId,
-                        EmployeeId = "user", // Simplified to avoid null reference
-                        EmployeeName = "Nhân viên", // Simplified to avoid null reference
-                        Department = "Chưa phân công", // Simplified to avoid null reference
-                        Position = "Employee", // Simplified to avoid null reference
+                        EmployeeId = a.User != null ? a.User.Id.ToString() : "N/A",
+                        EmployeeName = a.User != null ? (a.User.FullName ?? a.User.Username ?? "Nhân viên") : "Nhân viên",
+                        Department = a.User != null && a.User.Department != null ? a.User.Department.Name : "Chưa phân công",
+                        Position = a.User != null ? a.User.Role.ToString() : "Employee",
                         Date = a.Date.ToString("yyyy-MM-dd"),
                         CheckIn = a.CheckInTime.HasValue ? a.CheckInTime.Value.ToString("HH:mm") : null,
                         CheckOut = a.CheckOutTime.HasValue ? a.CheckOutTime.Value.ToString("HH:mm") : null,
