@@ -38,12 +38,12 @@ namespace FertilizerWarehouseAPI.Controllers
             {
                 // Check if AttendanceRecords table exists and has data
                 var totalRecords = await _context.AttendanceRecords.CountAsync();
-                Console.WriteLine($"Total attendance records: {totalRecords}");
+                // Console.WriteLine($"Total attendance records: {totalRecords}"); // Commented out to reduce logs
 
                 // If no records exist, return empty array
                 if (totalRecords == 0)
                 {
-                    Console.WriteLine("No attendance records found, returning empty array");
+                    // Console.WriteLine("No attendance records found, returning empty array"); // Commented out to reduce logs
                     return Ok(new { success = true, data = new object[0], total = 0, message = "No attendance records found" });
                 }
 
@@ -81,7 +81,7 @@ namespace FertilizerWarehouseAPI.Controllers
                     })
                     .ToListAsync();
 
-                Console.WriteLine($"Found {records.Count} attendance records");
+                // Console.WriteLine($"Found {records.Count} attendance records"); // Commented out to reduce logs
                 return Ok(new { success = true, data = records, total = totalRecords });
             }
             catch (Exception ex)
@@ -357,7 +357,7 @@ namespace FertilizerWarehouseAPI.Controllers
             {
                 // Ensure date is UTC to avoid PostgreSQL issues
                 var targetDate = date.HasValue ? DateTime.SpecifyKind(date.Value.Date, DateTimeKind.Utc) : DateTime.UtcNow.Date;
-                Console.WriteLine($"Getting overtime status for date: {targetDate:yyyy-MM-dd}");
+                // Console.WriteLine($"Getting overtime status for date: {targetDate:yyyy-MM-dd}"); // Commented out to reduce logs
                 
                 var records = await _context.AttendanceRecords
                     .Where(a => a.Date.Date == targetDate.Date && a.IsOvertimeRequired == true)
@@ -371,7 +371,7 @@ namespace FertilizerWarehouseAPI.Controllers
                     })
                     .ToListAsync();
 
-                Console.WriteLine($"Found {records.Count} overtime records for {targetDate:yyyy-MM-dd}");
+                // Console.WriteLine($"Found {records.Count} overtime records for {targetDate:yyyy-MM-dd}"); // Commented out to reduce logs
                 return Ok(new { success = true, data = records, date = targetDate.ToString("yyyy-MM-dd") });
             }
             catch (Exception ex)

@@ -55,8 +55,8 @@ public class ProductsController : ControllerBase
                 // This ensures we get the most accurate current stock
                 var currentStock = Math.Max(warehouseStock, transactionalStock);
 
-                // Debug log
-                Console.WriteLine($"Product {productId}: WarehouseStock={warehouseStock}, Imported={totalImported}, Exported={totalExported}, TransactionalStock={transactionalStock}, FinalStock={currentStock}");
+                // Debug log - commented out to reduce logs
+                // Console.WriteLine($"Product {productId}: WarehouseStock={warehouseStock}, Imported={totalImported}, Exported={totalExported}, TransactionalStock={transactionalStock}, FinalStock={currentStock}");
 
                 return currentStock;
             }

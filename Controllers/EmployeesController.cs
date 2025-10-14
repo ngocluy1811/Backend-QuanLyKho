@@ -359,10 +359,10 @@ namespace FertilizerWarehouseAPI.Controllers
         {
             try
             {
-                Console.WriteLine($"🚀 UpdateEmployee called with ID: {id}");
+                // Console.WriteLine($"🚀 UpdateEmployee called with ID: {id}"); // Commented out to reduce logs
                 
-                // Debug: Log raw request body
-                Console.WriteLine($"🔍 Raw DTO object: {System.Text.Json.JsonSerializer.Serialize(updateDto)}");
+                // Debug: Log raw request body - commented out to reduce logs
+                // Console.WriteLine($"🔍 Raw DTO object: {System.Text.Json.JsonSerializer.Serialize(updateDto)}");
                 
                 if (updateDto == null)
                 {
@@ -370,9 +370,9 @@ namespace FertilizerWarehouseAPI.Controllers
                     return BadRequest(new { message = "Request body cannot be null" });
                 }
 
-                // Debug: Log the received DTO
-                Console.WriteLine($"🔍 Received DTO: FullName={updateDto.FullName}");
-                Console.WriteLine($"🔍 Password field: {updateDto.Password}");
+                // Debug: Log the received DTO - commented out to reduce logs
+                // Console.WriteLine($"🔍 Received DTO: FullName={updateDto.FullName}");
+                // Console.WriteLine($"🔍 Password field: {updateDto.Password}");
 
                 var employee = await _context.Users.FindAsync(id);
                 if (employee == null)
@@ -381,15 +381,15 @@ namespace FertilizerWarehouseAPI.Controllers
                 // Check if password is provided and not empty
                 if (!string.IsNullOrEmpty(updateDto.Password))
                 {
-                    Console.WriteLine($"🔍 Password provided, updating password hash");
+                    // Console.WriteLine($"🔍 Password provided, updating password hash"); // Commented out to reduce logs
                     // Hash the password and update PasswordHash
                     employee.PasswordHash = BCrypt.Net.BCrypt.HashPassword(updateDto.Password);
                     employee.MustChangePassword = true;
-                    Console.WriteLine($"✅ Password updated and hashed");
+                    // Console.WriteLine($"✅ Password updated and hashed"); // Commented out to reduce logs
                 }
                 else
                 {
-                    Console.WriteLine($"🔍 No password provided, keeping existing password");
+                    // Console.WriteLine($"🔍 No password provided, keeping existing password"); // Commented out to reduce logs
                 }
 
                 // Update basic fields

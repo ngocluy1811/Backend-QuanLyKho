@@ -40,11 +40,11 @@ public class ProductBatchesController : ControllerBase
     {
         try
         {
-                Console.WriteLine("Getting product batches...");
+                // Console.WriteLine("Getting product batches..."); // Commented out to reduce logs
                 
                 // Check if ProductBatches table exists and has data
                 var totalBatches = await _context.ProductBatches.CountAsync();
-                Console.WriteLine($"Total product batches: {totalBatches}");
+                // Console.WriteLine($"Total product batches: {totalBatches}"); // Commented out to reduce logs
 
                 // If no batches exist, return empty array
                 if (totalBatches == 0)
@@ -128,7 +128,7 @@ public class ProductBatchesController : ControllerBase
                     });
                 }
 
-                Console.WriteLine($"Found {batchesWithWarehouseStock.Count} product batches");
+                // Console.WriteLine($"Found {batchesWithWarehouseStock.Count} product batches"); // Commented out to reduce logs
 
                 return Ok(new { 
                     success = true, 
@@ -582,7 +582,7 @@ public class ProductBatchesController : ControllerBase
             {
                 Console.WriteLine("=== Recalculating ALL batch quantities ===");
                 var batches = await _context.ProductBatches.ToListAsync();
-                Console.WriteLine($"Found {batches.Count} ProductBatches to recalculate");
+                // Console.WriteLine($"Found {batches.Count} ProductBatches to recalculate"); // Commented out to reduce logs
                 
                 foreach (var batch in batches)
                 {
