@@ -297,13 +297,19 @@ namespace FertilizerWarehouseAPI.Controllers
                 DateTime checkInTime;
                 try
                 {
-                    checkInTime = !string.IsNullOrEmpty(request.CheckInTime) 
-                        ? DateTime.Parse($"{targetDate:yyyy-MM-dd} {request.CheckInTime}").ToUniversalTime()
-                        : DateTime.UtcNow;
+                    if (!string.IsNullOrEmpty(request.CheckInTime) && request.CheckInTime != "00:")
+                    {
+                        checkInTime = DateTime.Parse($"{targetDate:yyyy-MM-dd} {request.CheckInTime}").ToUniversalTime();
+                    }
+                    else
+                    {
+                        checkInTime = DateTime.UtcNow;
+                    }
                 }
                 catch (Exception ex)
                 {
-                    return BadRequest(new { success = false, message = $"Thời gian không hợp lệ: {request.CheckInTime}", error = ex.Message });
+                    Console.WriteLine($"DateTime parsing error: {ex.Message}");
+                    checkInTime = DateTime.UtcNow;
                 }
                 
                 var existingRecord = await _context.AttendanceRecords
@@ -382,13 +388,19 @@ namespace FertilizerWarehouseAPI.Controllers
                 DateTime checkOutTime;
                 try
                 {
-                    checkOutTime = !string.IsNullOrEmpty(request.CheckOutTime) 
-                        ? DateTime.Parse($"{targetDate:yyyy-MM-dd} {request.CheckOutTime}").ToUniversalTime()
-                        : DateTime.UtcNow;
+                    if (!string.IsNullOrEmpty(request.CheckOutTime) && request.CheckOutTime != "00:")
+                    {
+                        checkOutTime = DateTime.Parse($"{targetDate:yyyy-MM-dd} {request.CheckOutTime}").ToUniversalTime();
+                    }
+                    else
+                    {
+                        checkOutTime = DateTime.UtcNow;
+                    }
                 }
                 catch (Exception ex)
                 {
-                    return BadRequest(new { success = false, message = $"Thời gian không hợp lệ: {request.CheckOutTime}", error = ex.Message });
+                    Console.WriteLine($"DateTime parsing error: {ex.Message}");
+                    checkOutTime = DateTime.UtcNow;
                 }
                 
                 var existingRecord = await _context.AttendanceRecords
@@ -406,12 +418,8 @@ namespace FertilizerWarehouseAPI.Controllers
                 Console.WriteLine($"Record found - CheckInTime: {existingRecord.CheckInTime}");
                 Console.WriteLine($"Record found - CheckOutTime: {existingRecord.CheckOutTime}");
 
-                // Check if user has checked in (has CheckInTime)
-                if (existingRecord.CheckInTime == null || existingRecord.CheckInTime == DateTime.MinValue)
-                {
-                    Console.WriteLine($"ERROR: User {request.UserId} has not checked in on {targetDate:yyyy-MM-dd}");
-                    return BadRequest(new { success = false, message = $"Chưa chấm công vào ngày {targetDate:yyyy-MM-dd}, không thể chấm công ra" });
-                }
+                // For form check-out, allow check-out even without check-in
+                // Only check if record exists
 
 
                 // Update existing record with new time
