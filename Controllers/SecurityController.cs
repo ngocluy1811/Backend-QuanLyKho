@@ -265,7 +265,7 @@ namespace FertilizerWarehouseAPI.Controllers
         /// Resolve security alert
         /// </summary>
         [HttpPost("alerts/{alertId}/resolve")]
-        public async Task<IActionResult> ResolveAlert(Guid alertId, [FromBody] ResolveAlertRequest request)
+        public async Task<IActionResult> ResolveAlert(Guid alertId, [FromBody] SecurityResolveAlertRequest request)
         {
             try
             {
@@ -348,7 +348,7 @@ namespace FertilizerWarehouseAPI.Controllers
         public string Reason { get; set; } = string.Empty;
     }
 
-    public class ResolveAlertRequest
+    public class SecurityResolveAlertRequest
     {
         public string? ResolutionNotes { get; set; }
     }

@@ -29,6 +29,10 @@ public class ApplicationDbContext : DbContext
         // Attendance & Leave Management
         public DbSet<AttendanceRecord> AttendanceRecords { get; set; }
         public DbSet<LeaveRequestModel> LeaveRequests { get; set; }
+        
+        // Notifications & Alerts
+        public DbSet<Models.Notification> Notifications { get; set; }
+        public DbSet<AlertResolution> AlertResolutions { get; set; }
 
     // Warehouse & Positions
     public DbSet<Warehouse> Warehouses { get; set; }
@@ -85,8 +89,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<TaskComment> TaskComments { get; set; }
     public DbSet<Report> Reports { get; set; }
 
-    // Notifications & Alerts
-    public DbSet<Notification> Notifications { get; set; }
+    // Notifications & Alerts (Legacy)
     public DbSet<Alert> Alerts { get; set; }
     public DbSet<AlertRule> AlertRules { get; set; }
 
