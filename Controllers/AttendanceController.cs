@@ -6,24 +6,24 @@ using FertilizerWarehouseAPI.Models.DTOs;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 
-public class CheckInRequest
-{
-    public int UserId { get; set; }
-    public int EmployeeId { get; set; }
-    public string? CheckInTime { get; set; }
-    public string? Date { get; set; }
-}
-
-public class CheckOutRequest
-{
-    public int UserId { get; set; }
-    public int EmployeeId { get; set; }
-    public string? CheckOutTime { get; set; }
-    public string? Date { get; set; }
-}
-
 namespace FertilizerWarehouseAPI.Controllers
 {
+    public class CheckInRequest
+    {
+        public int UserId { get; set; }
+        public int EmployeeId { get; set; }
+        public string? CheckInTime { get; set; }
+        public string? Date { get; set; }
+    }
+
+    public class CheckOutRequest
+    {
+        public int UserId { get; set; }
+        public int EmployeeId { get; set; }
+        public string? CheckOutTime { get; set; }
+        public string? Date { get; set; }
+    }
+
     [ApiController]
     [Route("api/[controller]")]
     public class AttendanceController : ControllerBase
