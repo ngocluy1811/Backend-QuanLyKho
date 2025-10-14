@@ -285,8 +285,8 @@ namespace FertilizerWarehouseAPI.Controllers
                 try
                 {
                     targetDate = !string.IsNullOrEmpty(request.Date) 
-                        ? DateTime.Parse(request.Date).Date 
-                        : DateTime.Now.Date;
+                        ? DateTime.Parse(request.Date).Date.ToUniversalTime() 
+                        : DateTime.UtcNow.Date;
                 }
                 catch (Exception ex)
                 {
@@ -298,8 +298,8 @@ namespace FertilizerWarehouseAPI.Controllers
                 try
                 {
                     checkInTime = !string.IsNullOrEmpty(request.CheckInTime) 
-                        ? DateTime.Parse($"{targetDate:yyyy-MM-dd} {request.CheckInTime}")
-                        : DateTime.Now;
+                        ? DateTime.Parse($"{targetDate:yyyy-MM-dd} {request.CheckInTime}").ToUniversalTime()
+                        : DateTime.UtcNow;
                 }
                 catch (Exception ex)
                 {
@@ -318,8 +318,8 @@ namespace FertilizerWarehouseAPI.Controllers
                         Date = targetDate,
                         CheckInTime = checkInTime,
                         Status = "present",
-                        CreatedAt = DateTime.Now,
-                        UpdatedAt = DateTime.Now
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
                     };
                     _context.AttendanceRecords.Add(newRecord);
                     Console.WriteLine($"Created new attendance record for UserId: {request.UserId} on {targetDate:yyyy-MM-dd}");
@@ -328,7 +328,7 @@ namespace FertilizerWarehouseAPI.Controllers
                 {
                     // Update existing record with new time
                     existingRecord.CheckInTime = checkInTime;
-                    existingRecord.UpdatedAt = DateTime.Now;
+                    existingRecord.UpdatedAt = DateTime.UtcNow;
                     Console.WriteLine($"Updated check-in time for UserId: {request.UserId} on {targetDate:yyyy-MM-dd} to {checkInTime:HH:mm}");
                 }
 
@@ -367,8 +367,8 @@ namespace FertilizerWarehouseAPI.Controllers
                 try
                 {
                     targetDate = !string.IsNullOrEmpty(request.Date) 
-                        ? DateTime.Parse(request.Date).Date 
-                        : DateTime.Now.Date;
+                        ? DateTime.Parse(request.Date).Date.ToUniversalTime() 
+                        : DateTime.UtcNow.Date;
                 }
                 catch (Exception ex)
                 {
@@ -380,8 +380,8 @@ namespace FertilizerWarehouseAPI.Controllers
                 try
                 {
                     checkOutTime = !string.IsNullOrEmpty(request.CheckOutTime) 
-                        ? DateTime.Parse($"{targetDate:yyyy-MM-dd} {request.CheckOutTime}")
-                        : DateTime.Now;
+                        ? DateTime.Parse($"{targetDate:yyyy-MM-dd} {request.CheckOutTime}").ToUniversalTime()
+                        : DateTime.UtcNow;
                 }
                 catch (Exception ex)
                 {
@@ -399,7 +399,7 @@ namespace FertilizerWarehouseAPI.Controllers
 
                 // Update existing record with new time
                 existingRecord.CheckOutTime = checkOutTime;
-                existingRecord.UpdatedAt = DateTime.Now;
+                existingRecord.UpdatedAt = DateTime.UtcNow;
                 Console.WriteLine($"Updated check-out time for UserId: {request.UserId} on {targetDate:yyyy-MM-dd} to {checkOutTime:HH:mm}");
 
                 await _context.SaveChangesAsync();
