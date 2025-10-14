@@ -185,7 +185,7 @@ public class DashboardController : ControllerBase
 
                 // Sắp xếp theo thời gian
                 var sortedActivities = activities
-                    .OrderByDescending(a => DateTime.Parse(a.GetType().GetProperty("date").GetValue(a).ToString()))
+                    .OrderByDescending(a => a.GetType().GetProperty("date")?.GetValue(a)?.ToString())
                     .Take(5)
                     .ToList();
 
@@ -218,7 +218,7 @@ public class DashboardController : ControllerBase
 
                 // Lấy sản phẩm hết hạn sử dụng
                 var expiredProducts = await _context.ProductBatches
-                    .Where(pb => pb.ExpiryDate <= DateTime.Now.AddDays(30)) // Hết hạn trong 30 ngày
+                    .Where(pb => pb.ExpiryDate.HasValue && pb.ExpiryDate <= DateTime.Now.AddDays(30)) // Hết hạn trong 30 ngày
                     .Join(_context.Products, pb => pb.ProductId, p => p.Id, (pb, p) => new
                     {
                         productName = p.ProductName,
