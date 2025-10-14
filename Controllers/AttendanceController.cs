@@ -505,19 +505,6 @@ namespace FertilizerWarehouseAPI.Controllers
         }
     }
 
-    public class CheckInRequest
-    {
-        public int UserId { get; set; }
-        public string CheckInTime { get; set; } = string.Empty;
-        public string? Date { get; set; }
-    }
-
-    public class CheckOutRequest
-    {
-        public int UserId { get; set; }
-        public string CheckOutTime { get; set; } = string.Empty;
-        public string? Date { get; set; }
-    }
 
     public class CreateAttendanceRecordRequest
     {
