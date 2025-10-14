@@ -9,11 +9,15 @@ using Microsoft.AspNetCore.Authorization;
 public class CheckInRequest
 {
     public int UserId { get; set; }
+    public string? CheckInTime { get; set; }
+    public string? Date { get; set; }
 }
 
 public class CheckOutRequest
 {
     public int UserId { get; set; }
+    public string? CheckOutTime { get; set; }
+    public string? Date { get; set; }
 }
 
 namespace FertilizerWarehouseAPI.Controllers
@@ -271,9 +275,18 @@ namespace FertilizerWarehouseAPI.Controllers
 
                 Console.WriteLine($"Check-in request for UserId: {request.UserId}");
                 
-                var today = DateTime.UtcNow.Date;
+                // Use provided date or default to today
+                var targetDate = !string.IsNullOrEmpty(request.Date) 
+                    ? DateTime.Parse(request.Date).Date 
+                    : DateTime.UtcNow.Date;
+                
+                // Use provided time or default to current time
+                var checkInTime = !string.IsNullOrEmpty(request.CheckInTime) 
+                    ? DateTime.Parse($"{targetDate:yyyy-MM-dd} {request.CheckInTime}")
+                    : DateTime.UtcNow;
+                
                 var existingRecord = await _context.AttendanceRecords
-                    .FirstOrDefaultAsync(a => a.UserId == request.UserId && a.Date.Date == today);
+                    .FirstOrDefaultAsync(a => a.UserId == request.UserId && a.Date.Date == targetDate);
 
                 if (existingRecord == null)
                 {
@@ -281,21 +294,21 @@ namespace FertilizerWarehouseAPI.Controllers
                     var newRecord = new AttendanceRecord
                     {
                         UserId = request.UserId,
-                        Date = today,
-                        CheckInTime = DateTime.UtcNow,
+                        Date = targetDate,
+                        CheckInTime = checkInTime,
                         Status = "present",
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     };
                     _context.AttendanceRecords.Add(newRecord);
-                    Console.WriteLine($"Created new attendance record for UserId: {request.UserId}");
+                    Console.WriteLine($"Created new attendance record for UserId: {request.UserId} on {targetDate:yyyy-MM-dd}");
                 }
                 else
                 {
-                    // Update existing record
-                    existingRecord.CheckInTime = DateTime.UtcNow;
+                    // Update existing record with new time
+                    existingRecord.CheckInTime = checkInTime;
                     existingRecord.UpdatedAt = DateTime.UtcNow;
-                    Console.WriteLine($"Updated check-in time for UserId: {request.UserId}");
+                    Console.WriteLine($"Updated check-in time for UserId: {request.UserId} on {targetDate:yyyy-MM-dd} to {checkInTime:HH:mm}");
                 }
 
                 await _context.SaveChangesAsync();
@@ -323,19 +336,28 @@ namespace FertilizerWarehouseAPI.Controllers
 
                 Console.WriteLine($"Check-out request for UserId: {request.UserId}");
                 
-                var today = DateTime.UtcNow.Date;
+                // Use provided date or default to today
+                var targetDate = !string.IsNullOrEmpty(request.Date) 
+                    ? DateTime.Parse(request.Date).Date 
+                    : DateTime.UtcNow.Date;
+                
+                // Use provided time or default to current time
+                var checkOutTime = !string.IsNullOrEmpty(request.CheckOutTime) 
+                    ? DateTime.Parse($"{targetDate:yyyy-MM-dd} {request.CheckOutTime}")
+                    : DateTime.UtcNow;
+                
                 var existingRecord = await _context.AttendanceRecords
-                    .FirstOrDefaultAsync(a => a.UserId == request.UserId && a.Date.Date == today);
+                    .FirstOrDefaultAsync(a => a.UserId == request.UserId && a.Date.Date == targetDate);
 
                 if (existingRecord == null)
                 {
-                    return BadRequest(new { success = false, message = "Chưa chấm công vào, không thể chấm công ra" });
+                    return BadRequest(new { success = false, message = $"Chưa chấm công vào ngày {targetDate:yyyy-MM-dd}, không thể chấm công ra" });
                 }
 
-                // Update existing record
-                existingRecord.CheckOutTime = DateTime.UtcNow;
+                // Update existing record with new time
+                existingRecord.CheckOutTime = checkOutTime;
                 existingRecord.UpdatedAt = DateTime.UtcNow;
-                Console.WriteLine($"Updated check-out time for UserId: {request.UserId}");
+                Console.WriteLine($"Updated check-out time for UserId: {request.UserId} on {targetDate:yyyy-MM-dd} to {checkOutTime:HH:mm}");
 
                 await _context.SaveChangesAsync();
                 Console.WriteLine("Successfully saved check-out record");
