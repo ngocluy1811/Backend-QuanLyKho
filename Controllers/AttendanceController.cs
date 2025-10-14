@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 public class CheckInRequest
 {
     public int UserId { get; set; }
+    public int EmployeeId { get; set; }
     public string? CheckInTime { get; set; }
     public string? Date { get; set; }
 }
@@ -16,6 +17,7 @@ public class CheckInRequest
 public class CheckOutRequest
 {
     public int UserId { get; set; }
+    public int EmployeeId { get; set; }
     public string? CheckOutTime { get; set; }
     public string? Date { get; set; }
 }
@@ -273,42 +275,44 @@ namespace FertilizerWarehouseAPI.Controllers
                     return BadRequest(new { success = false, message = "Request body cannot be null" });
                 }
 
-                Console.WriteLine($"Check-in request for UserId: {request.UserId}");
+                // Use EmployeeId if provided, otherwise use UserId
+                var userId = request.EmployeeId > 0 ? request.EmployeeId : request.UserId;
+                Console.WriteLine($"Check-in request for UserId: {userId}");
                 
                 // Use provided date or default to today
                 var targetDate = !string.IsNullOrEmpty(request.Date) 
                     ? DateTime.Parse(request.Date).Date 
-                    : DateTime.UtcNow.Date;
+                    : DateTime.Now.Date;
                 
-                // Use provided time or default to current time
+                // Use provided time or default to current local time
                 var checkInTime = !string.IsNullOrEmpty(request.CheckInTime) 
                     ? DateTime.Parse($"{targetDate:yyyy-MM-dd} {request.CheckInTime}")
-                    : DateTime.UtcNow;
+                    : DateTime.Now;
                 
                 var existingRecord = await _context.AttendanceRecords
-                    .FirstOrDefaultAsync(a => a.UserId == request.UserId && a.Date.Date == targetDate);
+                    .FirstOrDefaultAsync(a => a.UserId == userId && a.Date.Date == targetDate);
 
                 if (existingRecord == null)
                 {
                     // Create new record
                     var newRecord = new AttendanceRecord
                     {
-                        UserId = request.UserId,
+                        UserId = userId,
                         Date = targetDate,
                         CheckInTime = checkInTime,
                         Status = "present",
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
+                        CreatedAt = DateTime.Now,
+                        UpdatedAt = DateTime.Now
                     };
                     _context.AttendanceRecords.Add(newRecord);
-                    Console.WriteLine($"Created new attendance record for UserId: {request.UserId} on {targetDate:yyyy-MM-dd}");
+                    Console.WriteLine($"Created new attendance record for UserId: {userId} on {targetDate:yyyy-MM-dd}");
                 }
                 else
                 {
                     // Update existing record with new time
                     existingRecord.CheckInTime = checkInTime;
-                    existingRecord.UpdatedAt = DateTime.UtcNow;
-                    Console.WriteLine($"Updated check-in time for UserId: {request.UserId} on {targetDate:yyyy-MM-dd} to {checkInTime:HH:mm}");
+                    existingRecord.UpdatedAt = DateTime.Now;
+                    Console.WriteLine($"Updated check-in time for UserId: {userId} on {targetDate:yyyy-MM-dd} to {checkInTime:HH:mm}");
                 }
 
                 await _context.SaveChangesAsync();
@@ -334,20 +338,22 @@ namespace FertilizerWarehouseAPI.Controllers
                     return BadRequest(new { success = false, message = "Request body cannot be null" });
                 }
 
-                Console.WriteLine($"Check-out request for UserId: {request.UserId}");
+                // Use EmployeeId if provided, otherwise use UserId
+                var userId = request.EmployeeId > 0 ? request.EmployeeId : request.UserId;
+                Console.WriteLine($"Check-out request for UserId: {userId}");
                 
                 // Use provided date or default to today
                 var targetDate = !string.IsNullOrEmpty(request.Date) 
                     ? DateTime.Parse(request.Date).Date 
-                    : DateTime.UtcNow.Date;
+                    : DateTime.Now.Date;
                 
-                // Use provided time or default to current time
+                // Use provided time or default to current local time
                 var checkOutTime = !string.IsNullOrEmpty(request.CheckOutTime) 
                     ? DateTime.Parse($"{targetDate:yyyy-MM-dd} {request.CheckOutTime}")
-                    : DateTime.UtcNow;
+                    : DateTime.Now;
                 
                 var existingRecord = await _context.AttendanceRecords
-                    .FirstOrDefaultAsync(a => a.UserId == request.UserId && a.Date.Date == targetDate);
+                    .FirstOrDefaultAsync(a => a.UserId == userId && a.Date.Date == targetDate);
 
                 if (existingRecord == null)
                 {
@@ -356,8 +362,8 @@ namespace FertilizerWarehouseAPI.Controllers
 
                 // Update existing record with new time
                 existingRecord.CheckOutTime = checkOutTime;
-                existingRecord.UpdatedAt = DateTime.UtcNow;
-                Console.WriteLine($"Updated check-out time for UserId: {request.UserId} on {targetDate:yyyy-MM-dd} to {checkOutTime:HH:mm}");
+                existingRecord.UpdatedAt = DateTime.Now;
+                Console.WriteLine($"Updated check-out time for UserId: {userId} on {targetDate:yyyy-MM-dd} to {checkOutTime:HH:mm}");
 
                 await _context.SaveChangesAsync();
                 Console.WriteLine("Successfully saved check-out record");
