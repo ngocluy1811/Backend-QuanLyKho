@@ -396,6 +396,12 @@ namespace FertilizerWarehouseAPI.Controllers
                     return BadRequest(new { success = false, message = $"Chưa chấm công vào ngày {targetDate:yyyy-MM-dd}, không thể chấm công ra" });
                 }
 
+                // Check if user has checked in (has CheckInTime)
+                if (existingRecord.CheckInTime == null || existingRecord.CheckInTime == DateTime.MinValue)
+                {
+                    return BadRequest(new { success = false, message = $"Chưa chấm công vào ngày {targetDate:yyyy-MM-dd}, không thể chấm công ra" });
+                }
+
 
                 // Update existing record with new time
                 existingRecord.CheckOutTime = checkOutTime;
